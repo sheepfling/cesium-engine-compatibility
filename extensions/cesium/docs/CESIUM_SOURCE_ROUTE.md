@@ -73,6 +73,9 @@ Lane policy:
   project
 - secondary proof lane: open or exercise the public sample project after the
   plugin-core lane already passes
+- Windows source-development uses the samples checkout with the plugin exposed
+  under `Plugins/cesium-unreal` so Unreal can discover the local source route
+  without relying on a marketplace install
 
 Why split them:
 

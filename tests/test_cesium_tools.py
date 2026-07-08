@@ -64,16 +64,20 @@ def example_repo_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         if engine == "unreal":
             project_marker = example_root / "CesiumVanillaExample.uproject"
             sample_checkout = source_root / "cesium-unreal-samples"
+            sample_plugin_bridge = sample_checkout / "Plugins" / "cesium-unreal"
         elif engine == "unity":
             project_marker = example_root / "ProjectSettings" / "ProjectVersion.txt"
             sample_checkout = None
+            sample_plugin_bridge = None
         else:
             project_marker = example_root / "project.godot"
             sample_checkout = None
+            sample_plugin_bridge = None
         engine_specs[engine] = {
             **spec,
             "source_checkout": source_root / str(Path(spec["source_checkout"]).name),
             "sample_checkout": sample_checkout,
+            "sample_plugin_bridge": sample_plugin_bridge,
             "example_root": example_root,
             "project_marker": project_marker,
         }
@@ -84,6 +88,8 @@ def example_repo_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         source_checkout.mkdir(parents=True, exist_ok=True)
         if isinstance(sample_checkout, Path):
             sample_checkout.mkdir(parents=True, exist_ok=True)
+        if isinstance(sample_plugin_bridge, Path):
+            sample_plugin_bridge.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(example_workflow, "ENGINE_SPECS", engine_specs)
     return root
@@ -104,6 +110,9 @@ def test_example_workflow_reports_are_self_consistent(example_repo_layout: Path)
         assert report["readiness"]["source_route_ready"] is True
         assert report["readiness"]["example_scaffold_ready"] is True
         assert doctor["status"] == "ok"
+        if engine == "unreal":
+            bridge_check = next(check for check in doctor["checks"] if check["name"] == "sample_plugin_bridge")
+            assert bridge_check["status"] == "ok"
 
 
 def test_root_cli_dispatches_to_expected_scripts(monkeypatch: pytest.MonkeyPatch) -> None:

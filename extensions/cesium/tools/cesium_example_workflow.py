@@ -19,6 +19,7 @@ ENGINE_SPECS: dict[str, dict[str, object]] = {
         "preferred_version": "5.7",
         "source_checkout": SOURCE_ROUTE_ROOT / "cesium-unreal",
         "sample_checkout": SOURCE_ROUTE_ROOT / "cesium-unreal-samples",
+        "sample_plugin_bridge": SOURCE_ROUTE_ROOT / "cesium-unreal-samples" / "Plugins" / "cesium-unreal",
         "example_root": ROOT / "extensions" / "cesium" / "examples" / "unreal" / "CesiumVanillaExample",
         "project_marker": ROOT / "extensions" / "cesium" / "examples" / "unreal" / "CesiumVanillaExample" / "CesiumVanillaExample.uproject",
     },
@@ -27,6 +28,7 @@ ENGINE_SPECS: dict[str, dict[str, object]] = {
         "preferred_version": "6000.5",
         "source_checkout": SOURCE_ROUTE_ROOT / "cesium-unity",
         "sample_checkout": None,
+        "sample_plugin_bridge": None,
         "example_root": ROOT / "extensions" / "cesium" / "examples" / "unity" / "CesiumVanillaExample",
         "project_marker": ROOT / "extensions" / "cesium" / "examples" / "unity" / "CesiumVanillaExample" / "ProjectSettings" / "ProjectVersion.txt",
     },
@@ -35,6 +37,7 @@ ENGINE_SPECS: dict[str, dict[str, object]] = {
         "preferred_version": "4.7",
         "source_checkout": SOURCE_ROUTE_ROOT / "3D-Tiles-For-Godot",
         "sample_checkout": None,
+        "sample_plugin_bridge": None,
         "example_root": ROOT / "extensions" / "cesium" / "examples" / "godot" / "CesiumVanillaExample",
         "project_marker": ROOT / "extensions" / "cesium" / "examples" / "godot" / "CesiumVanillaExample" / "project.godot",
     },
@@ -93,6 +96,7 @@ def doctor_payload(engine: str) -> dict[str, object]:
     spec = ENGINE_SPECS[engine]
     source_checkout = Path(spec["source_checkout"])
     sample_checkout = spec["sample_checkout"]
+    sample_plugin_bridge = spec.get("sample_plugin_bridge")
     example_root = Path(spec["example_root"])
     project_marker = Path(spec["project_marker"])
 
@@ -104,6 +108,7 @@ def doctor_payload(engine: str) -> dict[str, object]:
     ]
     if engine == "unreal":
         checks.append(_check_path("sample_checkout", Path(sample_checkout) if sample_checkout else None, required=False))
+        checks.append(_check_path("sample_plugin_bridge", Path(sample_plugin_bridge) if sample_plugin_bridge else None, required=True))
 
     failures = [check for check in checks if check["status"] == "fail"]
     warnings = [check for check in checks if check["status"] == "warn"]
@@ -119,6 +124,8 @@ def doctor_payload(engine: str) -> dict[str, object]:
         next_steps.append(f"Restore the project marker under {_display_path(project_marker)}.")
     if engine == "unreal" and sample_checkout is not None and not Path(sample_checkout).is_dir():
         next_steps.append("Fetch the Cesium Unreal samples checkout for the richer Unreal example lane.")
+    if engine == "unreal" and sample_plugin_bridge is not None and not Path(sample_plugin_bridge).exists():
+        next_steps.append("Expose the Cesium Unreal plugin inside the samples checkout at Plugins/cesium-unreal.")
 
     return {
         "schema": "cesium.example_lane_doctor.v1",
@@ -129,6 +136,7 @@ def doctor_payload(engine: str) -> dict[str, object]:
         "source_route_root": str(SOURCE_ROUTE_ROOT),
         "source_checkout": str(source_checkout),
         "sample_checkout": str(sample_checkout) if sample_checkout is not None else None,
+        "sample_plugin_bridge": str(sample_plugin_bridge) if sample_plugin_bridge is not None else None,
         "example_root": str(example_root),
         "project_marker": str(project_marker),
         "status": status,
@@ -186,6 +194,8 @@ def render_markdown(payload: dict[str, object]) -> str:
     ]
     if payload.get("sample_checkout") is not None:
         lines.append(f"- sample_checkout: `{payload.get('sample_checkout') or 'missing'}`")
+    if payload.get("sample_plugin_bridge") is not None:
+        lines.append(f"- sample_plugin_bridge: `{payload.get('sample_plugin_bridge') or 'missing'}`")
     if payload.get("project_marker") is not None:
         lines.append(f"- project_marker: `{payload.get('project_marker') or 'missing'}`")
     if payload.get("checks"):
@@ -224,6 +234,8 @@ def print_text(payload: dict[str, object]) -> None:
     print(f"example_root: {payload.get('example_root', '')}")
     if payload.get("sample_checkout") is not None:
         print(f"sample_checkout: {payload.get('sample_checkout') or 'missing'}")
+    if payload.get("sample_plugin_bridge") is not None:
+        print(f"sample_plugin_bridge: {payload.get('sample_plugin_bridge') or 'missing'}")
     if payload.get("project_marker") is not None:
         print(f"project_marker: {payload.get('project_marker') or 'missing'}")
     print("checks:")

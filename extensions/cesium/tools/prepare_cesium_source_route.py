@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import json
 from pathlib import Path
 import subprocess
+import platform
 from typing import Any
 
 
@@ -102,7 +103,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _git(path: Path, args: list[str], *, check: bool = False) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["git", "-c", "http.sslVerify=false", "-C", str(path), *args],
+        ["git", "-c", "http.sslVerify=false", "-c", f"safe.directory={path}", "-C", str(path), *args],
         check=check,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -133,13 +134,53 @@ def _is_dirty(path: Path) -> bool | None:
 def _run_logged(path: Path, args: list[str], commands: list[dict[str, Any]]) -> subprocess.CompletedProcess[str]:
     completed = _git(path, args, check=False)
     commands.append(
-        {
-            "cmd": ["git", "-c", "http.sslVerify=false", "-C", str(path), *args],
-            "returncode": completed.returncode,
-            "output": completed.stdout.strip(),
-        }
-    )
+            {
+                "cmd": ["git", "-c", "http.sslVerify=false", "-c", f"safe.directory={path}", "-C", str(path), *args],
+                "returncode": completed.returncode,
+                "output": completed.stdout.strip(),
+            }
+        )
     return completed
+
+
+def _ensure_directory_link(link: Path, target: Path, commands: list[dict[str, Any]]) -> bool:
+    if link.exists() or link.is_symlink():
+        return True
+    link.parent.mkdir(parents=True, exist_ok=True)
+    if platform.system().lower() == "windows":
+        completed = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        commands.append(
+            {
+                "cmd": ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                "returncode": completed.returncode,
+                "output": completed.stdout.strip(),
+            }
+        )
+        return completed.returncode == 0
+    try:
+        link.symlink_to(target, target_is_directory=True)
+        commands.append(
+            {
+                "cmd": ["python", "-c", f"link={link!s}; target={target!s}"],
+                "returncode": 0,
+                "output": "created directory symlink",
+            }
+        )
+        return True
+    except OSError as exc:
+        commands.append(
+            {
+                "cmd": ["python", "-c", f"link={link!s}; target={target!s}"],
+                "returncode": 1,
+                "output": str(exc),
+            }
+        )
+        return False
 
 
 def _configure_submodule_overrides(spec: RepoSpec, commands: list[dict[str, Any]]) -> bool:
@@ -374,6 +415,26 @@ def prepare_repo(
                 "after": after,
                 "commands": commands,
             }
+
+    if spec.key == "unreal_samples":
+        unreal_plugin = CHECKOUT_ROOT / "cesium-unreal"
+        bridge = spec.path / "Plugins" / "cesium-unreal"
+        if unreal_plugin.is_dir() and not bridge.exists():
+            if not _ensure_directory_link(bridge, unreal_plugin, commands):
+                blockers.append("unreal samples plugin bridge failed")
+                status = "failed"
+                detail = f"{spec.label} could not expose the Cesium Unreal plugin inside its Plugins folder."
+                after = inspect_repo(spec)
+                return {
+                    "key": spec.key,
+                    "label": spec.label,
+                    "status": status,
+                    "detail": detail,
+                    "blockers": blockers,
+                    "before": before,
+                    "after": after,
+                    "commands": commands,
+                }
 
     after = inspect_repo(spec)
     return {
