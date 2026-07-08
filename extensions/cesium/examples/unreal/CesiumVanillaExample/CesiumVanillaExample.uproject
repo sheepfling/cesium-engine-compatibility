@@ -1,0 +1,20 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "",
+  "Category": "Cesium",
+  "Description": "Repo-owned pure-Cesium Unreal example project scaffold",
+  "Modules": [
+    {
+      "Name": "CesiumVanillaExample",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "CesiumForUnreal",
+      "Enabled": true,
+      "Optional": true
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+; Engine configuration file.
+; Repo-owned pure-Cesium Godot example scaffold.
+
+config_version=5
+
+[application]
+
+config/name="CesiumVanillaExample"
+run/main_scene="res://scenes/Main.tscn"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
