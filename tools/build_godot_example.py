@@ -14,18 +14,23 @@ import subprocess
 from typing import Any
 
 from extensions.cesium.tools import engine_root_discovery
+from tools import godot_versioning
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_DIR = ROOT / "extensions" / "cesium" / "examples" / "godot" / "CesiumVanillaExample"
 DEFAULT_OUT_DIR = ROOT / "artifacts" / "reports" / "godot_example_build"
 DEFAULT_LOG_ROOT = DEFAULT_OUT_DIR / "logs"
-BUILD_TARGETS = ("windows", "linux")
+BUILD_TARGETS = ("windows", "linux", "mac")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--godot-version", help="Godot version prefix to select, for example 4.7")
+    parser.add_argument("--godot-version", help="Exact Godot version tag, for example 4.7-stable")
+    parser.add_argument(
+        "--godot-selector",
+        help="Acceptable Godot version selector, for example 4.7-stable..4.8-dev1 or 4.7-stable,4.8-dev1",
+    )
     parser.add_argument("--build-target", choices=BUILD_TARGETS, default="windows")
     parser.add_argument("--project-dir", type=Path, default=PROJECT_DIR)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
@@ -44,6 +49,7 @@ def _export_preset_name(build_target: str) -> str:
     return {
         "windows": "Windows Desktop",
         "linux": "Linux/X11",
+        "mac": "Mac Desktop",
     }[build_target]
 
 
@@ -57,20 +63,26 @@ def _template_root(godot_version: str, runtime_root: Path) -> Path:
         return Path(override).expanduser() / godot_version
     if platform.system().lower() == "windows":
         return Path(os.environ.get("APPDATA", str(runtime_root / "RoamingAppData"))) / "Godot" / "export_templates" / godot_version
+    if platform.system().lower() == "darwin":
+        return Path(os.environ.get("HOME", str(runtime_root / "Home"))) / "Library" / "Application Support" / "Godot" / "export_templates" / godot_version
     return Path(os.environ.get("XDG_DATA_HOME", str(runtime_root / "Home" / ".local" / "share"))) / "godot" / "export_templates" / godot_version
 
 
 def _template_paths(template_root: Path, build_target: str) -> list[Path]:
     if build_target == "windows":
         return [template_root / "windows_debug_x86_64.exe", template_root / "windows_release_x86_64.exe"]
-    return [template_root / "linux_debug.x86_64", template_root / "linux_release.x86_64"]
+    if build_target == "linux":
+        return [template_root / "linux_debug.x86_64", template_root / "linux_release.x86_64"]
+    return [template_root / "macos_debug.zip", template_root / "macos_release.zip"]
 
 
 def _build_output_path(project_dir: Path, build_target: str) -> Path:
     base = project_dir / "build" / "godot" / "CesiumVanillaExample"
     if build_target == "windows":
         return base / "windows" / "CesiumVanillaExample.exe"
-    return base / "linux" / "CesiumVanillaExample.x86_64"
+    if build_target == "linux":
+        return base / "linux" / "CesiumVanillaExample.x86_64"
+    return base / "mac" / "CesiumVanillaExample.app"
 
 
 def _staged_project_dir(stage_root: Path, godot_version: str, stage_token: str) -> Path:
@@ -93,22 +105,35 @@ def _discover_installs() -> list[dict[str, object]]:
     system = platform.system().lower()
     if system == "windows":
         return engine_root_discovery.discover_godot_windows_versions()
+    if system == "darwin":
+        return engine_root_discovery.discover_godot_macos_versions()
     return engine_root_discovery.discover_godot_linux_versions()
+
+
+def _installed_version_tags() -> list[str]:
+    return [str(install.get("version") or "") for install in _discover_installs() if isinstance(install, dict) and str(install.get("version") or "")]
 
 
 def _public_search_roots() -> list[str]:
     return [str(path) for path in engine_root_discovery.public_engine_search_roots()["godot"]]
 
 
-def _resolve_install(godot_version: str | None = None) -> dict[str, object] | None:
+def _resolve_install(godot_version: str | None = None, godot_selector: str | None = None) -> tuple[dict[str, object] | None, str | None]:
     installs = _discover_installs()
     if godot_version is not None:
         for install in installs:
             version = str(install.get("version") or "")
             if version == godot_version or version.startswith(godot_version):
-                return install
-        return None
-    return installs[0] if installs else None
+                return install, "exact"
+        return None, "exact"
+    if godot_selector:
+        selected = godot_versioning.select_versions(_installed_version_tags(), godot_selector, limit=1)
+        if selected:
+            for install in installs:
+                if str(install.get("version") or "") == selected[0]:
+                    return install, "selector"
+        return None, "selector"
+    return (installs[0], "default") if installs else (None, "default")
 
 
 def _tail_lines(text: str, limit: int = 80) -> list[str]:
@@ -164,7 +189,23 @@ def _write_report(payload: dict[str, Any], json_out: Path, md_out: Path) -> None
 
 def _build_env(runtime_root: Path) -> dict[str, str]:
     env = dict(os.environ)
-    if platform.system().lower() != "windows":
+    system = platform.system().lower()
+    if system == "darwin":
+        home = runtime_root / "Home"
+        cache = home / ".cache"
+        config = home / ".config"
+        data = home / ".local" / "share"
+        temp_dir = runtime_root / "Temp"
+        for path in (home, cache, config, data, temp_dir):
+            path.mkdir(parents=True, exist_ok=True)
+        env["HOME"] = str(home)
+        env["CFFIXED_USER_HOME"] = str(home)
+        env["TMPDIR"] = str(temp_dir)
+        env["XDG_CACHE_HOME"] = str(cache)
+        env["XDG_CONFIG_HOME"] = str(config)
+        env["XDG_DATA_HOME"] = str(data)
+        return env
+    if system != "windows":
         return env
     user_profile = runtime_root / "UserProfile"
     localappdata = runtime_root / "LocalAppData"
@@ -204,6 +245,10 @@ def render_markdown(payload: dict[str, Any]) -> str:
         lines.extend(["", "## Template Paths", ""])
         for path in payload["template_paths"]:
             lines.append(f"- {path}")
+    if payload.get("missing_template_paths"):
+        lines.extend(["", "## Missing Template Paths", ""])
+        for path in payload["missing_template_paths"]:
+            lines.append(f"- {path}")
     if payload.get("stdout_tail"):
         lines.extend(["", "## Stdout Tail", ""])
         for line in payload["stdout_tail"]:
@@ -229,17 +274,19 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
     project_dir = args.project_dir.expanduser().resolve()
     out_dir = args.out_dir.expanduser().resolve()
     public_search_roots = _public_search_roots()
-    install = _resolve_install(args.godot_version)
+    install, version_source = _resolve_install(args.godot_version, args.godot_selector)
     if install is None or not install.get("executable"):
         return {
             "schema": "cesium.godot_example_build.v1",
             "generated_at": datetime.now(UTC).isoformat(),
             "status": "needs-attention",
             "detail": "No suitable Godot editor install was discovered.",
-            "godot_version": args.godot_version,
+            "godot_version": args.godot_version or args.godot_selector,
+            "requested_version_source": version_source,
             "build_target": args.build_target,
             "project_dir": str(project_dir),
             "public_search_roots": public_search_roots,
+            "available_versions": _installed_version_tags(),
             "editor_path": None,
             "output_path": str(_build_output_path(project_dir, args.build_target)),
             "template_root": None,
@@ -254,6 +301,7 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
             "next_steps": [
                 "Install a Godot editor under one of the discovered public search roots, or set FASTDIS_GODOT_ROOTS.",
                 r'For Windows, a good default is C:\Users\Public\Godot\engines\windows or C:\Users\Public\Godot\engines\linux.',
+                "For macOS, a good default is /Applications or ~/Applications.",
                 "Install the matching export template package for the target editor version.",
             ],
         }
@@ -283,11 +331,13 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
             "status": "dry-run",
             "detail": "not executed; use without --dry-run to run the Godot example build",
             "godot_version": godot_version,
+            "requested_version_source": version_source,
             "build_target": args.build_target,
             "project_dir": str(project_dir),
             "staged_project_dir": str(staged_project_dir),
             "stage_token": stage_token,
             "public_search_roots": public_search_roots,
+            "available_versions": _installed_version_tags(),
             "template_root": str(template_root),
             "template_paths": [str(path) for path in template_paths],
             "missing_template_paths": missing_template_paths,
@@ -302,7 +352,9 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
             "failure_signals": [],
             "next_steps": [
                 f"Search for Godot installs under: {', '.join(public_search_roots) or 'the configured roots'}",
-                "Install matching export templates before running the export build.",
+                "Use `cesium-godot-bootstrap editor` to stage the editor zip if the install is missing.",
+                "Use `cesium-godot-bootstrap templates` to stage the matching export templates if they are missing.",
+                "If you are starting the macOS lane, use the Mac target only after the app bundle and export template names are finalized.",
             ],
         }
         _write_report(payload, json_out, md_out)
@@ -317,21 +369,23 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
     output_exists = output_path.is_file() or output_path.is_dir()
     status = "pass" if completed.returncode == 0 and output_exists else "fail"
     payload = {
-        "schema": "cesium.godot_example_build.v1",
-        "generated_at": datetime.now(UTC).isoformat(),
-        "status": status,
-        "detail": "Godot example build completed" if status == "pass" else "Godot example build failed",
-        "godot_version": godot_version,
-        "build_target": args.build_target,
-        "project_dir": str(project_dir),
-        "staged_project_dir": str(staged_project_dir),
-        "stage_token": stage_token,
-        "public_search_roots": public_search_roots,
-        "template_root": str(template_root),
-        "template_paths": [str(path) for path in template_paths],
-        "missing_template_paths": missing_template_paths,
-        "editor_path": str(install["executable"]),
-        "command": command,
+            "schema": "cesium.godot_example_build.v1",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "status": status,
+            "detail": "Godot example build completed" if status == "pass" else "Godot example build failed",
+            "godot_version": godot_version,
+            "requested_version_source": version_source,
+            "build_target": args.build_target,
+            "project_dir": str(project_dir),
+            "staged_project_dir": str(staged_project_dir),
+            "stage_token": stage_token,
+            "public_search_roots": public_search_roots,
+            "available_versions": _installed_version_tags(),
+            "template_root": str(template_root),
+            "template_paths": [str(path) for path in template_paths],
+            "missing_template_paths": missing_template_paths,
+            "editor_path": str(install["executable"]),
+            "command": command,
         "output_path": str(output_path),
         "output_exists": output_exists,
         "output_size_bytes": output_path.stat().st_size if output_path.is_file() else None,
@@ -342,8 +396,9 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
         "build_log_tail": _tail_lines(build_log_text),
         "failure_signals": [*_failure_signals(_tail_lines(build_log_text)), *_missing_template_signals(template_paths)],
         "next_steps": [
-            "If the lane failed on missing templates, install the matching Godot export template pack into the discovered template root.",
+            "If the lane failed on missing templates, use `cesium-godot-bootstrap templates --godot-version <version>` or `--godot-selector <range>` to stage the matching Godot export template pack.",
             "If the lane failed on discovery, place the editor under one of the public search roots or set FASTDIS_GODOT_ROOTS.",
+            "If you are bootstrapping the macOS lane, confirm the Mac export preset name and template filenames before treating the route as green.",
         ],
     }
     _write_report(payload, json_out, md_out)

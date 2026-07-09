@@ -274,6 +274,18 @@ def _godot_lane_spec(native_target: str) -> LaneSpec:
                 ),
             )
         )
+        if native_target == "mac":
+            tasks.append(
+                LaneTask(
+                    id=f"godot-build-{native_target}-{version_slug}",
+                    label=f"Godot {native_target.title()} Build {version}",
+                    commands=(f"cesium-godot-example-build --build-target mac --godot-version {version}",),
+                    artifacts=(
+                        f"artifacts/reports/godot_example_build/godot_example_build_{version_slug}_mac.json",
+                        f"artifacts/reports/godot_example_build/godot_example_build_{version_slug}_mac.md",
+                    ),
+                )
+            )
     return LaneSpec(
         f"godot-host-{native_target}",
         f"Cesium Godot {native_target.title()} Host Matrix",

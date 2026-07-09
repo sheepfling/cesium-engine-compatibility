@@ -15,6 +15,8 @@ Top-level command:
 
 - `cesium-bootstrap`
 - `cesium-prepare-source-route`
+- `cesium-godot-bootstrap`
+- `cesium-host-inventory`
 - `cesium-godot-doctor`
 - `cesium-example doctor --engine unreal`
 - `cesium-planned-routes`
@@ -27,6 +29,8 @@ Install and run:
 python -m pip install -e .[dev]
 cesium-bootstrap
 cesium-prepare-source-route
+cesium-godot-bootstrap editor --godot-version 4.7-stable --native-target windows
+cesium-host-inventory
 cesium-godot-doctor
 cesium-example doctor --engine unreal
 cesium-planned-routes
@@ -46,6 +50,20 @@ useful second command on a fresh host after bootstrap.
 `cesium-godot-doctor` is the quickest Godot-specific host check. It defaults to
 the Windows native lane and reports the public Godot search roots, the expected
 export template paths, and the next-step guidance when templates are missing.
+
+`cesium-godot-bootstrap` is the fallback lane for staging Godot editor zips or
+export templates into the public locations the discovery helpers already know
+how to scan. Use `editor` for the engine zip and `templates` for the export
+template pack. Both commands accept `--godot-version` for an exact tag or
+`--godot-selector` for inclusive ranges like `4.7-stable..4.8-dev1`.
+`cesium-godot-example-build` now accepts the same selector flow when you want
+the build lane to pick the best matching installed editor.
+
+`cesium-host-inventory` is the quickest way to see what engines, platforms,
+architectures, and core apps are already discoverable on the current host.
+Pass `--godot-selector` to trim the Godot runway view and
+`--max-godot-matches` to keep the filtered list short when there are many
+installed or downloadable targets.
 
 `cesium-cross-platform-fix-notes` turns the current matrix, audit, and planned
 routes packets into a reviewer-facing checklist for the remaining fixes.

@@ -25,6 +25,7 @@ from tools import (
     build_cesium_compatibility_packet,
     build_cesium_cross_platform_fix_notes,
     build_cesium_execution_audit,
+    build_cesium_host_inventory,
     build_cesium_planned_routes,
     build_godot_example,
     build_unity_example,
@@ -32,6 +33,8 @@ from tools import (
     capture_unity_host_report,
     export_unity_host_handoff,
     import_unity_host_report,
+    godot_bootstrap,
+    godot_versioning,
     run_cesium_plugin_lanes,
     godot_doctor,
     stage_unity_host_report,
@@ -62,6 +65,22 @@ def test_prepare_source_route_report_shape() -> None:
     unreal = next(repo for repo in report["repos"] if repo["key"] == "unreal_plugin")
     assert unreal["before"]["target_branch"] == "main"
     assert unreal["detail"].startswith("Cesium Unreal plugin")
+
+
+def test_prepare_source_route_honors_repo_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FASTDIS_CESIUM_UNREAL_REMOTE", "https://example.invalid/cesium-unreal.git")
+    monkeypatch.setenv("FASTDIS_CESIUM_UNREAL_BRANCH", "macos-dev")
+    monkeypatch.setenv("FASTDIS_CESIUM_GODOT_REMOTE", "https://example.invalid/3D-Tiles-For-Godot.git")
+    monkeypatch.setenv("FASTDIS_CESIUM_GODOT_BRANCH", "macos")
+
+    specs = prepare_route.default_repo_specs()
+    unreal = next(spec for spec in specs if spec.key == "unreal_plugin")
+    godot = next(spec for spec in specs if spec.key == "godot_plugin")
+
+    assert unreal.remote_url == "https://example.invalid/cesium-unreal.git"
+    assert unreal.target_branch == "macos-dev"
+    assert godot.remote_url == "https://example.invalid/3D-Tiles-For-Godot.git"
+    assert godot.target_branch == "macos"
 
 
 @pytest.fixture()
@@ -889,6 +908,7 @@ def test_cesium_plugin_lanes_dry_run_expands_known_lanes(monkeypatch: pytest.Mon
     assert any(task.id.startswith("unity-linux-docker-") for task in planned_bundle.tasks)
     assert any(task.id.startswith("unity-capture-") for task in planned_bundle.tasks)
     assert any(task.id.startswith("godot-report-mac-") for task in planned_bundle.tasks)
+    assert any(task.id.startswith("godot-build-mac-") for task in planned_bundle.tasks)
     bundle_payload = run_cesium_plugin_lanes.build_payload(
         run_cesium_plugin_lanes.parse_args(["--dry-run", "--lanes", "cross-platform-planned"])
     )
@@ -1495,6 +1515,21 @@ def test_public_engine_search_roots_include_configured_unreal_and_godot_roots(tm
     assert godot_root in roots["godot"]
 
 
+def test_discover_godot_macos_versions_scans_app_bundles(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    mac_root = tmp_path / "Applications"
+    bundle = mac_root / "Godot_v4.7-stable_macos.app"
+    executable_dir = bundle / "Contents" / "MacOS"
+    executable_dir.mkdir(parents=True, exist_ok=True)
+    (executable_dir / "Godot").write_text("stub\n", encoding="utf-8")
+    monkeypatch.setattr(engine_root_discovery, "_macos_godot_roots", lambda: [mac_root])
+    versions = engine_root_discovery.discover_godot_macos_versions()
+
+    assert [row["version"] for row in versions] == ["4.7-stable"]
+    assert versions[0]["platform"] == "mac"
+    assert versions[0]["root"] == bundle
+    assert versions[0]["executable"] == executable_dir / "Godot"
+
+
 def test_unreal_linux_notes_note_is_present() -> None:
     findings = ROOT / "docs" / "CESIUM_UNREAL_LINUX_NOTES.md"
 
@@ -1564,6 +1599,19 @@ def test_unity_source_route_note_tracks_proof_lane_and_project_version() -> None
     content = findings.read_text(encoding="utf-8")
     assert "current proof lane: `6000.5.0f1`" in content
     assert "repo-owned example project version file: `6000.6.0b2`" in content
+    assert "FASTDIS_CESIUM_UNREAL_REMOTE" in content
+    assert "Cesium macOS Silicon Build Notes" in content
+
+
+def test_macos_silicon_build_notes_are_present() -> None:
+    findings = ROOT / "extensions" / "cesium" / "docs" / "CESIUM_MACOS_SILICON_BUILD_NOTES.md"
+
+    assert findings.is_file()
+    content = findings.read_text(encoding="utf-8")
+    assert "macOS Silicon Build Notes" in content
+    assert "arm64" in content
+    assert "x86_64" in content
+    assert "FASTDIS_CESIUM_UNREAL_REMOTE" in content
 
 
 def test_unity_example_readme_tracks_current_example_version() -> None:
@@ -2137,6 +2185,290 @@ def test_godot_example_build_dry_run_shapes(tmp_path: Path, monkeypatch: pytest.
     assert payload["output_path"].endswith(r"build\godot\CesiumVanillaExample\windows\CesiumVanillaExample.exe")
     assert payload["public_search_roots"] == [r"C:\Users\Public\Godot", r"D:\Godot"]
     assert payload["missing_template_paths"] == []
+
+
+def test_godot_example_build_dry_run_mac_shapes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_dir = tmp_path / "CesiumVanillaExample"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "project.godot").write_text("config_version=5\n", encoding="utf-8")
+    (project_dir / "export_presets.cfg").write_text("[preset.0]\nname=\"Mac Desktop\"\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        build_godot_example,
+        "_discover_installs",
+        lambda: [
+            {
+                "version": "4.7-stable",
+                "platform": "mac",
+                "root": tmp_path / "Godot" / "engines" / "mac" / "Godot_v4.7-stable_macos.app",
+                "executable": tmp_path / "Godot" / "engines" / "mac" / "Godot_v4.7-stable_macos.app" / "Contents" / "MacOS" / "Godot",
+                "console_executable": tmp_path / "Godot" / "engines" / "mac" / "Godot_v4.7-stable_macos.app" / "Contents" / "MacOS" / "Godot",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        build_godot_example.engine_root_discovery,
+        "public_engine_search_roots",
+        lambda: {"godot": [Path("/Applications"), Path.home() / "Applications"], "unreal": [], "unity": []},
+    )
+    template_root = tmp_path / "GodotTemplates" / "4.7-stable"
+    template_root.mkdir(parents=True, exist_ok=True)
+    (template_root / "macos_debug.zip").write_text("template\n", encoding="utf-8")
+    (template_root / "macos_release.zip").write_text("template\n", encoding="utf-8")
+    monkeypatch.setattr(build_godot_example, "_template_root", lambda godot_version, runtime_root: template_root)
+
+    payload = build_godot_example.run_build(
+        build_godot_example.parse_args(
+            [
+                "--dry-run",
+                "--build-target",
+                "mac",
+                "--godot-version",
+                "4.7",
+                "--project-dir",
+                str(project_dir),
+                "--out-dir",
+                str(tmp_path / "report"),
+            ]
+        )
+    )
+
+    assert payload["schema"] == "cesium.godot_example_build.v1"
+    assert payload["status"] == "dry-run"
+    assert payload["build_target"] == "mac"
+    assert "Mac Desktop" in " ".join(payload["command"])
+    assert payload["output_path"].endswith(r"build\godot\CesiumVanillaExample\mac\CesiumVanillaExample.app")
+    assert payload["missing_template_paths"] == []
+
+
+def test_godot_example_build_dry_run_uses_selector(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_dir = tmp_path / "CesiumVanillaExample"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "project.godot").write_text("config_version=5\n", encoding="utf-8")
+    (project_dir / "export_presets.cfg").write_text("[preset.0]\nname=\"Windows Desktop\"\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        build_godot_example,
+        "_discover_installs",
+        lambda: [
+            {
+                "version": "4.6.3-stable",
+                "platform": "windows",
+                "root": tmp_path / "Godot" / "engines" / "windows" / "Godot_v4.6.3-stable_win64.exe",
+                "executable": tmp_path / "Godot" / "engines" / "windows" / "Godot_v4.6.3-stable_win64.exe" / "Godot_v4.6.3-stable_win64.exe",
+                "console_executable": tmp_path / "Godot" / "engines" / "windows" / "Godot_v4.6.3-stable_win64.exe" / "Godot_v4.6.3-stable_win64_console.exe",
+            },
+            {
+                "version": "4.8-dev1",
+                "platform": "windows",
+                "root": tmp_path / "Godot" / "engines" / "windows" / "Godot_v4.8-dev1_win64.exe",
+                "executable": tmp_path / "Godot" / "engines" / "windows" / "Godot_v4.8-dev1_win64.exe" / "Godot_v4.8-dev1_win64.exe",
+                "console_executable": tmp_path / "Godot" / "engines" / "windows" / "Godot_v4.8-dev1_win64.exe" / "Godot_v4.8-dev1_win64_console.exe",
+            },
+        ],
+    )
+    monkeypatch.setattr(
+        build_godot_example.engine_root_discovery,
+        "public_engine_search_roots",
+        lambda: {"godot": [Path(r"C:\Users\Public\Godot")], "unreal": [], "unity": []},
+    )
+    template_root = tmp_path / "GodotTemplates" / "4.8-dev1"
+    template_root.mkdir(parents=True, exist_ok=True)
+    (template_root / "windows_debug_x86_64.exe").write_text("template\n", encoding="utf-8")
+    (template_root / "windows_release_x86_64.exe").write_text("template\n", encoding="utf-8")
+    monkeypatch.setattr(build_godot_example, "_template_root", lambda godot_version, runtime_root: template_root)
+
+    payload = build_godot_example.run_build(
+        build_godot_example.parse_args(
+            [
+                "--dry-run",
+                "--build-target",
+                "windows",
+                "--godot-selector",
+                "4.7-stable..4.8-dev1",
+                "--project-dir",
+                str(project_dir),
+                "--out-dir",
+                str(tmp_path / "report"),
+            ]
+        )
+    )
+
+    assert payload["godot_version"] == "4.8-dev1"
+    assert payload["requested_version_source"] == "selector"
+
+
+def test_godot_bootstrap_builds_expected_urls() -> None:
+    editor_url = godot_bootstrap.build_editor_download_url("4.7-stable", "mac")
+    template_url = godot_bootstrap.build_template_download_url("4.8-dev1")
+
+    assert editor_url == (
+        "https://downloads.godotengine.org/?version=4.7&flavor=stable&slug=macos.universal.zip&platform=macos.universal"
+    )
+    assert template_url == (
+        "https://downloads.godotengine.org/?version=4.8&flavor=dev1&slug=export_templates.tpz&platform=templates"
+    )
+
+
+def test_godot_bootstrap_editor_dry_run_uses_public_root(tmp_path: Path) -> None:
+    payload = godot_bootstrap.bootstrap_editor(
+        godot_version="4.7-stable",
+        native_target="windows",
+        install_root=tmp_path / "PublicGodot",
+        dry_run=True,
+    )
+
+    assert payload["status"] == "dry-run"
+    assert payload["download_url"].endswith("platform=windows.64")
+    assert payload["target_path"].endswith(r"PublicGodot\Godot_v4.7-stable_win64.exe")
+    assert payload["archive_page_url"] == "https://godotengine.org/download/archive/4.7-stable/"
+
+
+def test_godot_bootstrap_editor_extracts_flat_archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    archive = tmp_path / "godot.zip"
+    target_root = tmp_path / "PublicGodot"
+    target_root.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("Godot_v4.7-stable_win64.exe", "stub\n")
+
+    monkeypatch.setattr(godot_bootstrap, "_download_file", lambda url, destination: {"requested_url": url, "final_url": url, "download_path": str(archive)})
+
+    payload = godot_bootstrap.bootstrap_editor(
+        godot_version="4.7-stable",
+        native_target="windows",
+        install_root=target_root,
+        archive_path=archive,
+    )
+
+    install = target_root / "Godot_v4.7-stable_win64.exe"
+    assert payload["status"] == "ok"
+    assert install.is_dir()
+    assert (install / "Godot_v4.7-stable_win64.exe").is_file()
+
+
+def test_godot_bootstrap_templates_dry_run_builds_expected_url(tmp_path: Path) -> None:
+    payload = godot_bootstrap.bootstrap_templates(
+        godot_version="4.7-stable",
+        template_root=tmp_path / "templates",
+        dry_run=True,
+    )
+
+    assert payload["status"] == "dry-run"
+    assert payload["template_download_url"].endswith("slug=export_templates.tpz&platform=templates")
+    assert payload["template_target_path"].endswith("templates")
+
+
+def test_godot_bootstrap_template_selector_uses_any_installed_lane(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(godot_bootstrap, "_installed_version_tags", lambda native_target: {
+        "windows": ["4.7-stable"],
+        "linux": ["4.8-dev1"],
+        "mac": ["4.6.3-stable"],
+    }[native_target])
+
+    payload = godot_bootstrap.bootstrap_templates(
+        godot_selector="4.7-stable..4.8-dev1",
+        template_root=tmp_path / "templates",
+        dry_run=True,
+    )
+
+    assert payload["godot_version"] == "4.8-dev1"
+    assert payload["requested_version_source"] == "installed"
+
+
+def test_host_inventory_uses_engine_and_tool_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(build_cesium_host_inventory.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(build_cesium_host_inventory.platform, "machine", lambda: "AMD64")
+    monkeypatch.setattr(
+        build_cesium_host_inventory.shutil,
+        "which",
+        lambda command: {
+            "python": r"C:\Python\python.exe",
+            "python3": None,
+            "git": r"C:\Program Files\Git\cmd\git.exe",
+            "docker": r"C:\Program Files\Docker\docker.exe",
+            "dotnet": None,
+        }.get(command),
+    )
+    monkeypatch.setattr(
+        build_cesium_host_inventory.engine_root_discovery,
+        "public_engine_search_roots",
+        lambda: {
+            "unreal": [Path(r"C:\Users\Public\Unreal")],
+            "unity": [Path(r"C:\Users\Public\Unity")],
+            "godot": [Path(r"C:\Users\Public\Godot")],
+        },
+    )
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_unreal_linux_roots", lambda: [Path("/opt/unreal")])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_unreal_linux_archives", lambda: [Path(r"C:\Users\Public\Unreal\engines\linux\Linux_Unreal_Engine_5.8.0.zip")])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_windows_versions", lambda: [{"version": "4.7-stable"}])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_linux_versions", lambda: [{"version": "4.7-stable"}])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_macos_versions", lambda: [{"version": "4.7-stable"}])
+    monkeypatch.setattr(
+        build_cesium_host_inventory.unity_env,
+        "describe_host",
+        lambda: {
+            "platform": "Windows",
+            "arch": "AMD64",
+            "public_roots": [r"C:\Users\Public\Unity"],
+            "installs": [
+                {
+                    "version": "6000.5.2f1",
+                    "install_root": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
+                    "editor_path": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                    "editor_app_path": None,
+                    "source": "scan",
+                    "quirks": (),
+                }
+            ],
+            "default_install": {
+                "version": "6000.5.2f1",
+                "install_root": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
+                "editor_path": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                "editor_app_path": None,
+                "source": "scan",
+                "quirks": (),
+            },
+            "recommended_editor_overrides": {"FASTDIS_UNITY_EDITOR": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe"},
+        },
+    )
+
+    payload = build_cesium_host_inventory.build_payload()
+
+    assert payload["schema"] == "cesium.host_inventory.v1"
+    assert payload["host"]["platform"] == "Windows"
+    assert payload["engines"]["unity"]["installed_versions"] == ["6000.5.2f1"]
+    assert payload["engines"]["godot"]["mac_versions"] == ["4.7-stable"]
+    assert payload["runway"]["unity"] is True
+    assert payload["runway"]["godot"] is True
+    assert payload["runway"]["unreal"] is True
+
+
+def test_host_inventory_limits_godot_runway_when_selector_is_used(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_windows_versions", lambda: [{"version": "4.6.3-stable"}, {"version": "4.7-stable"}])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_linux_versions", lambda: [{"version": "4.7.1-rc1"}, {"version": "4.8-dev1"}])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_macos_versions", lambda: [{"version": "4.8-dev2"}, {"version": "4.8-dev1"}])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "public_engine_search_roots", lambda: {"unreal": [], "unity": [], "godot": [Path(r"C:\Users\Public\Godot")]})
+    monkeypatch.setattr(build_cesium_host_inventory.unity_env, "describe_host", lambda: {"platform": "Windows", "arch": "AMD64", "public_roots": [], "installs": [], "default_install": None, "recommended_editor_overrides": {}})
+
+    payload = build_cesium_host_inventory.build_payload(
+        build_cesium_host_inventory.parse_args(["--godot-selector", "4.7-stable..4.8-dev1", "--max-godot-matches", "2"])
+    )
+
+    assert payload["engines"]["godot"]["requested_selector"] == "4.7-stable..4.8-dev1"
+    assert payload["engines"]["godot"]["selected_versions"] == ["4.8-dev1", "4.7.1-rc1"]
+    assert payload["runway"]["godot"] is True
+
+
+def test_godot_version_selector_orders_and_limits_ranges() -> None:
+    tags = ["4.6.3-stable", "4.8-dev1", "4.7-stable", "4.7.1-rc1", "4.8-dev1"]
+
+    selected = godot_versioning.select_versions(tags, "4.7-stable..4.8-dev1", limit=2)
+
+    assert selected == ["4.8-dev1", "4.7.1-rc1"]
 
 
 def test_godot_linux_docker_build_mode_builds_expected_command(

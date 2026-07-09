@@ -2,9 +2,10 @@
 """Prepare the public Cesium source-route checkouts for reproducible engine compatibility work."""
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 import subprocess
 import platform
@@ -23,52 +24,87 @@ class RepoSpec:
     path: Path
     remote_url: str
     target_branch: str
+    remote_env: str | None = None
+    branch_env: str | None = None
     fallback_branches: tuple[str, ...] = ()
     submodule_url_overrides: tuple[tuple[str, str], ...] = ()
     update_submodules: bool = False
     official: bool = True
 
 
+def _resolve_repo_overrides(spec: RepoSpec) -> RepoSpec:
+    remote_url = spec.remote_url
+    if spec.remote_env:
+        remote_override = os.environ.get(spec.remote_env)
+        if remote_override:
+            remote_url = remote_override
+
+    target_branch = spec.target_branch
+    if spec.branch_env:
+        branch_override = os.environ.get(spec.branch_env)
+        if branch_override:
+            target_branch = branch_override
+
+    if remote_url == spec.remote_url and target_branch == spec.target_branch:
+        return spec
+    return replace(spec, remote_url=remote_url, target_branch=target_branch)
+
+
 def default_repo_specs() -> list[RepoSpec]:
     return [
-        RepoSpec(
-            key="unreal_plugin",
-            label="Cesium Unreal plugin",
-            path=CHECKOUT_ROOT / "cesium-unreal",
-            remote_url="https://github.com/CesiumGS/cesium-unreal.git",
-            target_branch="main",
-            submodule_url_overrides=(("extern/cesium-native", "https://github.com/CesiumGS/cesium-native.git"),),
-            update_submodules=True,
-            official=True,
+        _resolve_repo_overrides(
+            RepoSpec(
+                key="unreal_plugin",
+                label="Cesium Unreal plugin",
+                path=CHECKOUT_ROOT / "cesium-unreal",
+                remote_url="https://github.com/CesiumGS/cesium-unreal.git",
+                target_branch="main",
+                remote_env="FASTDIS_CESIUM_UNREAL_REMOTE",
+                branch_env="FASTDIS_CESIUM_UNREAL_BRANCH",
+                submodule_url_overrides=(("extern/cesium-native", "https://github.com/CesiumGS/cesium-native.git"),),
+                update_submodules=True,
+                official=True,
+            )
         ),
-        RepoSpec(
-            key="unity_plugin",
-            label="Cesium Unity plugin",
-            path=CHECKOUT_ROOT / "cesium-unity",
-            remote_url="https://github.com/CesiumGS/cesium-unity.git",
-            target_branch="main",
-            submodule_url_overrides=(("native~/extern/cesium-native", "https://github.com/CesiumGS/cesium-native.git"),),
-            update_submodules=True,
-            official=True,
+        _resolve_repo_overrides(
+            RepoSpec(
+                key="unity_plugin",
+                label="Cesium Unity plugin",
+                path=CHECKOUT_ROOT / "cesium-unity",
+                remote_url="https://github.com/CesiumGS/cesium-unity.git",
+                target_branch="main",
+                remote_env="FASTDIS_CESIUM_UNITY_REMOTE",
+                branch_env="FASTDIS_CESIUM_UNITY_BRANCH",
+                submodule_url_overrides=(("native~/extern/cesium-native", "https://github.com/CesiumGS/cesium-native.git"),),
+                update_submodules=True,
+                official=True,
+            )
         ),
-        RepoSpec(
-            key="unreal_samples",
-            label="Cesium Unreal samples",
-            path=CHECKOUT_ROOT / "cesium-unreal-samples",
-            remote_url="https://github.com/CesiumGS/cesium-unreal-samples.git",
-            target_branch="main",
-            update_submodules=False,
-            official=True,
+        _resolve_repo_overrides(
+            RepoSpec(
+                key="unreal_samples",
+                label="Cesium Unreal samples",
+                path=CHECKOUT_ROOT / "cesium-unreal-samples",
+                remote_url="https://github.com/CesiumGS/cesium-unreal-samples.git",
+                target_branch="main",
+                branch_env="FASTDIS_CESIUM_UNREAL_SAMPLES_BRANCH",
+                update_submodules=False,
+                official=True,
+            )
         ),
-        RepoSpec(
-            key="godot_plugin",
-            label="3D Tiles for Godot",
-            path=CHECKOUT_ROOT / "3D-Tiles-For-Godot",
-            remote_url="https://github.com/Battle-Road-Labs/3D-Tiles-For-Godot.git",
-            target_branch="main",
-            fallback_branches=("master",),
-            update_submodules=True,
-            official=False,
+        _resolve_repo_overrides(
+            RepoSpec(
+                key="godot_plugin",
+                label="3D Tiles for Godot",
+                path=CHECKOUT_ROOT / "3D-Tiles-For-Godot",
+                remote_url="https://github.com/Battle-Road-Labs/3D-Tiles-For-Godot.git",
+                target_branch="main",
+                remote_env="FASTDIS_CESIUM_GODOT_REMOTE",
+                branch_env="FASTDIS_CESIUM_GODOT_BRANCH",
+                fallback_branches=("master",),
+                update_submodules=True,
+                official=False,
+            )
         ),
     ]
 

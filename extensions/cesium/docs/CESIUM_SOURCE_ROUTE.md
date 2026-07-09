@@ -169,6 +169,21 @@ That layout is intentionally fork-friendly:
 - keep the workflow commands pointed at the same checkout roots
 - let the forked repos carry the source patches and PR history
 
+The source-route prep helper also accepts remote and branch overrides through
+environment variables, which makes it easier to point a macOS proof lane at a
+fork without rewriting the workflow:
+
+- `FASTDIS_CESIUM_UNREAL_REMOTE`
+- `FASTDIS_CESIUM_UNREAL_BRANCH`
+- `FASTDIS_CESIUM_UNITY_REMOTE`
+- `FASTDIS_CESIUM_UNITY_BRANCH`
+- `FASTDIS_CESIUM_UNREAL_SAMPLES_BRANCH`
+- `FASTDIS_CESIUM_GODOT_REMOTE`
+- `FASTDIS_CESIUM_GODOT_BRANCH`
+
+The first macOS-focused notes now live in
+[Cesium macOS Silicon Build Notes](CESIUM_MACOS_SILICON_BUILD_NOTES.md).
+
 In other words, the current public checkouts are the staging area, and your
 eventual Cesium forks should slide into those same roots without requiring a
 workflow rewrite.

@@ -41,6 +41,35 @@ That command defaults to the Windows native lane and prints the discovered
 public Godot roots, expected export templates, and next-step guidance when a
 template pack is missing.
 
+If you want the repo-owned Godot example build to choose from a range of
+installed editors, use:
+
+```bash
+cesium-godot-example-build --build-target windows --godot-selector 4.7-stable..4.8-dev1
+```
+
+If a Godot editor or template pack is missing, `cesium-godot-bootstrap` can
+stage the official archive zips into the public locations the repo already
+discovers. Use `--godot-version` for an exact tag or `--godot-selector` for a
+range such as `4.7-stable..4.8-dev1`. For example:
+
+```bash
+cesium-godot-bootstrap editor --godot-version 4.7-stable --native-target windows
+cesium-godot-bootstrap templates --godot-version 4.7-stable
+cesium-godot-bootstrap editor --godot-selector 4.7-stable..4.8-dev1 --native-target mac
+```
+
+If you want the lit-up runway view for the whole host, run:
+
+```bash
+cesium-host-inventory
+```
+
+That report unions the discovered engine roots, installed editor versions,
+platforms, and core toolchain apps into one packet. Add `--godot-selector` and
+`--max-godot-matches` when you want the Godot section filtered down to a
+smaller runway.
+
 If you want the remaining cross-platform bootstrap inventory instead, run:
 
 ```bash
