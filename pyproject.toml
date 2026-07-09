@@ -14,6 +14,31 @@ dev = ["pytest>=8"]
 
 [project.scripts]
 cesium = "cesium:main"
+cesium-bootstrap = "tools.bootstrap_local_dev:main"
+cesium-prepare-source-route = "extensions.cesium.tools.prepare_cesium_source_route:main"
+cesium-example = "extensions.cesium.tools.cesium_example_workflow:main"
+cesium-godot-doctor = "tools.godot_doctor:main"
+cesium-unreal-linux = "extensions.cesium.tools.unreal_linux_lane:main"
+cesium-unreal-linux-docker = "extensions.cesium.tools.unreal_linux_docker:main"
+cesium-godot-linux-docker = "extensions.cesium.tools.godot_linux_docker:main"
+cesium-godot-example-build = "tools.build_godot_example:main"
+cesium-unity-linux-docker = "extensions.cesium.tools.unity_linux_docker:main"
+cesium-unity-example-build = "tools.build_unity_example:main"
+cesium-engine-matrix = "tools.build_cesium_engine_matrix:main"
+cesium-unity-native-matrix = "tools.build_unity_native_matrix:main"
+cesium-compatibility-packet = "tools.build_cesium_compatibility_packet:main"
+cesium-cross-platform-fix-notes = "tools.build_cesium_cross_platform_fix_notes:main"
+cesium-planned-routes = "tools.build_cesium_planned_routes:main"
+cesium-plugin-lanes = "tools.run_cesium_plugin_lanes:main"
+cesium-execution-audit = "tools.build_cesium_execution_audit:main"
+cesium-capture-unity-host-report = "tools.capture_unity_host_report:main"
+cesium-stage-unity-host-report = "tools.stage_unity_host_report:main"
+cesium-export-unity-host-handoff = "tools.export_unity_host_handoff:main"
+cesium-import-unity-host-report = "tools.import_unity_host_report:main"
 
-[tool.setuptools]
-py-modules = ["cesium"]
+[tool.setuptools.packages.find]
+include = ["cesium", "cesium.*", "tools", "tools.*", "extensions", "extensions.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["artifacts", "build", "dist", "external"]

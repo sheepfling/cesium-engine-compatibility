@@ -9,6 +9,9 @@ Current purpose:
 - prove a clean Unity example project exists in repo-owned layout
 - keep vendor package import/compile proof separate from example-scene proof
 - give us a stable home for a small geospatial demo scene once the vendor lane is green
+- keep the editor-version compatibility story explicit for the current
+  example-project file, now `6000.6.0b2`, while the baseline proof lane remains
+  `6000.5.0f1`
 
 Current scaffold contents:
 
@@ -23,3 +26,4 @@ Next expected steps:
 2. Materialize a small geospatial entry scene.
 3. Keep the scene pure Cesium with no FastDIS dependency.
 4. Add a rerunnable proof lane that opens the project after the Unity vendor lane passes.
+5. Record any forward or backward editor drift in `docs/CESIUM_UNITY_6000_5_FINDINGS.md`.

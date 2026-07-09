@@ -66,6 +66,8 @@ Current public Cesium Unreal plugin route:
 - source plugin repo: `CesiumGS/cesium-unreal`
 - richer sample repo: `CesiumGS/cesium-unreal-samples`
 - working branch policy for source prep: `main`
+- Linux is a supported native target, but it gets its own host/toolchain notes
+  in `docs/CESIUM_UNREAL_LINUX_NOTES.md`
 
 Lane policy:
 
@@ -76,6 +78,8 @@ Lane policy:
 - Windows source-development uses the samples checkout with the plugin exposed
   under `Plugins/cesium-unreal` so Unreal can discover the local source route
   without relying on a marketplace install
+- Unreal Linux proof uses `cesium-unreal-linux
+  report` as the repo-owned inspection/report entry point
 
 Why split them:
 
@@ -88,12 +92,18 @@ Current public Cesium Unity plugin route:
 
 - source plugin repo: `CesiumGS/cesium-unity`
 - working branch policy for source prep: `main`
+- current proof lane: `6000.5.0f1`
+- repo-owned example project version file: `6000.6.0b2`
 
 Lane policy:
 
 - treat Cesium Unity as an official plugin compatibility lane
 - use install/import smoke first
 - only broaden into richer sample or parity checks after the base lane is green
+- keep forward/backward editor drift notes in
+  `docs/CESIUM_UNITY_6000_5_FINDINGS.md`
+- keep the current Unity version/package matrix in
+  `docs/CESIUM_UNITY_VERSION_MATRIX.md`
 
 ## Godot Route
 
@@ -101,30 +111,40 @@ Current public Godot Cesium-style route:
 
 - source plugin repo: `Battle-Road-Labs/3D-Tiles-For-Godot`
 - working branch policy for source prep: `master`
+- current repo pin: `4.7`
 
 Important boundary:
 
 - this is a community Godot 4 GDExtension focused on 3D Tiles capabilities
 - it should not be described as full official Cesium product parity unless
   direct evidence says so
+- Windows-native compatibility notes live in
+  `docs/CESIUM_GODOT_WINDOWS_4_7_BUILD_NOTES.md`
+- the four Windows evidence builds are tracked in
+  `docs/CESIUM_GODOT_WINDOWS_VERSION_MATRIX.md`
+- the four Linux evidence builds are tracked in
+  `docs/CESIUM_GODOT_LINUX_VERSION_MATRIX.md`
+- Linux and macOS compatibility notes live in
+  `docs/CESIUM_GODOT_CROSS_PLATFORM_NOTES.md`
 
 Lane policy:
 
 - first prove version/layout compatibility
 - then add scratch-project import/open smoke
 - then classify exact parity gaps versus the official Unreal and Unity routes
+- preserve Windows-native proof separately from Linux or macOS proof
 
 ## Current Workspace Mapping
 
 The repo now exposes:
 
-- `python extensions/cesium/tools/prepare_cesium_source_route.py`
-- `python extensions/cesium/tools/cesium_example_workflow.py discover --engine unreal`
-- `python extensions/cesium/tools/cesium_example_workflow.py doctor --engine unreal`
-- `python extensions/cesium/tools/cesium_example_workflow.py report --engine unreal`
-- `python extensions/cesium/tools/cesium_example_workflow.py full --engine unreal`
-- `python extensions/cesium/tools/cesium_example_workflow.py doctor --engine unity`
-- `python extensions/cesium/tools/cesium_example_workflow.py doctor --engine godot`
+- `cesium-prepare-source-route`
+- `cesium-example discover --engine unreal`
+- `cesium-example doctor --engine unreal`
+- `cesium-example report --engine unreal`
+- `cesium-example full --engine unreal`
+- `cesium-example doctor --engine unity`
+- `cesium-example doctor --engine godot`
 
 The Cesium example workflow currently owns:
 
@@ -161,7 +181,7 @@ Use this before live vendor work so the public-route checkouts are on the
 expected branches and submodules are initialized where needed:
 
 ```bash
-python extensions/cesium/tools/prepare_cesium_source_route.py
+cesium-prepare-source-route
 ```
 
 For raw source checkouts, branch prep is not enough by itself:
@@ -174,14 +194,14 @@ For raw source checkouts, branch prep is not enough by itself:
 
 Recommended operator order:
 
-1. `python extensions/cesium/tools/prepare_cesium_source_route.py`
-2. `python extensions/cesium/tools/cesium_example_workflow.py doctor --engine unreal`
-3. `python extensions/cesium/tools/cesium_example_workflow.py report --engine unreal`
-4. `python extensions/cesium/tools/cesium_example_workflow.py full --engine unreal`
-5. `python extensions/cesium/tools/cesium_example_workflow.py doctor --engine unity`
-6. `python extensions/cesium/tools/cesium_example_workflow.py report --engine unity`
-7. `python extensions/cesium/tools/cesium_example_workflow.py doctor --engine godot`
-8. `python extensions/cesium/tools/cesium_example_workflow.py report --engine godot`
+1. `cesium-prepare-source-route`
+2. `cesium-example doctor --engine unreal`
+3. `cesium-example report --engine unreal`
+4. `cesium-example full --engine unreal`
+5. `cesium-example doctor --engine unity`
+6. `cesium-example report --engine unity`
+7. `cesium-example doctor --engine godot`
+8. `cesium-example report --engine godot`
 
 When a live lane fails:
 

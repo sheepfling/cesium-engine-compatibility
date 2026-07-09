@@ -8,7 +8,7 @@ pure-Cesium example-project planning separate from the rest of the repo.
 For a fresh host, the quickest starting point is:
 
 ```bash
-python cesium.py bootstrap
+cesium-bootstrap
 ```
 
 That prepares the local dev prefix, creates the short scratch roots, and runs

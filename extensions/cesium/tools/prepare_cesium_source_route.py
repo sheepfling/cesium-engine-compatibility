@@ -249,25 +249,32 @@ def prepare_repo(
     blockers: list[str] = []
     status = "prepared"
     detail = f"{spec.label} is on the expected branch `{spec.target_branch}`."
+    clone_branches = (spec.target_branch, *spec.fallback_branches)
 
     if not before["exists"]:
-        clone_cmd = ["git", "-c", "http.sslVerify=false", "clone"]
-        clone_cmd.extend(["--branch", spec.target_branch, "--single-branch", spec.remote_url, str(spec.path)])
-        completed = subprocess.run(
-            clone_cmd,
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        commands.append(
-            {
-                "cmd": clone_cmd,
-                "returncode": completed.returncode,
-                "output": completed.stdout.strip(),
-            }
-        )
-        if completed.returncode != 0:
+        clone_result: subprocess.CompletedProcess[str] | None = None
+        chosen_branch: str | None = None
+        for branch in clone_branches:
+            clone_cmd = ["git", "-c", "http.sslVerify=false", "clone", "--branch", branch, "--single-branch", spec.remote_url, str(spec.path)]
+            completed = subprocess.run(
+                clone_cmd,
+                cwd=ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            commands.append(
+                {
+                    "cmd": clone_cmd,
+                    "returncode": completed.returncode,
+                    "output": completed.stdout.strip(),
+                }
+            )
+            if completed.returncode == 0:
+                clone_result = completed
+                chosen_branch = branch
+                break
+        if clone_result is None:
             return {
                 "key": spec.key,
                 "label": spec.label,
@@ -279,6 +286,8 @@ def prepare_repo(
                 "commands": commands,
             }
         before = inspect_repo(spec)
+        if chosen_branch is not None and chosen_branch != spec.target_branch:
+            detail = f"{spec.label} was cloned from `{chosen_branch}` because `{spec.target_branch}` was unavailable."
 
     if not before["is_git_checkout"]:
         return {

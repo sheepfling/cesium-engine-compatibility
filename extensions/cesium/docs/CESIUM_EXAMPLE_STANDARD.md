@@ -54,22 +54,35 @@ Every Cesium example lane should prove:
 
 ## Current Readiness Policy
 
-- `Cesium Unreal Example` should be built after the Unreal vendor matrix is
-  passing.
-- `Cesium Unity Example` should be built after Unity package/install proof is
-  pinned for the chosen editor lane.
+- `Cesium Unreal Example` should be built after the Unreal version matrix is
+  green for both the Windows proof lane and the Linux Docker proof lane.
+  Linux stays a separate host/toolchain proof lane and is tracked in
+  `docs/CESIUM_UNREAL_LINUX_NOTES.md`.
+- `Cesium Unity Example` should be built after the pinned editor lane is
+  verified. For now that lane is `6000.5.0f1`, while the repo-owned example
+  project file itself has moved to `6000.6.0b2`. Forward/backward editor drift
+  stays tracked separately in `docs/CESIUM_UNITY_6000_5_FINDINGS.md`, and the
+  current Unity version and package story are tracked in
+  `docs/CESIUM_UNITY_VERSION_MATRIX.md`.
 - `Cesium Godot Example` should be built after the Godot vendor doctor grows
-  into a scratch-project import/open smoke.
+  into a scratch-project import/open smoke. For now, the Windows-native lane
+  is pinned to `4.7` and tracked in
+  `docs/CESIUM_GODOT_WINDOWS_4_7_BUILD_NOTES.md`. The four Windows evidence
+  builds are tracked in `docs/CESIUM_GODOT_WINDOWS_VERSION_MATRIX.md`. Linux
+  evidence is tracked in `docs/CESIUM_GODOT_LINUX_VERSION_MATRIX.md`. Linux
+  and macOS proof routes share the same source route but are tracked
+  separately in `docs/CESIUM_GODOT_CROSS_PLATFORM_NOTES.md`.
 
 ## Operator Flow
 
 Start with:
 
 ```bash
-python extensions/cesium/tools/prepare_cesium_source_route.py
-python extensions/cesium/tools/cesium_example_workflow.py doctor --engine unreal
-python extensions/cesium/tools/cesium_example_workflow.py doctor --engine unity
-python extensions/cesium/tools/cesium_example_workflow.py doctor --engine godot
+cesium-prepare-source-route
+cesium-example doctor --engine unreal
+cesium-example doctor --engine unity
+cesium-example doctor --engine godot
+cesium-godot-doctor
 ```
 
 These doctor lanes are planning/quality gates over real repo-owned pure-Cesium example

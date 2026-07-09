@@ -10,3 +10,6 @@ That project is currently a source-backed scaffold, not yet a full demo.
 For local source development on Windows, the Cesium Unreal samples checkout
 should also expose the plugin under `Plugins/cesium-unreal` so Unreal can open
 the project directly from source.
+
+Linux stays a separate native proof lane and is tracked in
+`docs/CESIUM_UNREAL_LINUX_NOTES.md`.

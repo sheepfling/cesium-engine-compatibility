@@ -21,6 +21,8 @@ The target bar is:
 - keep the project free of FastDIS dependencies
 - produce a rerunnable demo and proof lane
 
+Linux proof is tracked separately in `docs/CESIUM_UNREAL_LINUX_NOTES.md`.
+
 ## Current State
 
 Current scaffold only:

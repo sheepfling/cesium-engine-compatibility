@@ -12,8 +12,16 @@ in the repo.
 - [Cesium source route](../extensions/cesium/docs/CESIUM_SOURCE_ROUTE.md)
 - [Cesium fork push plan](./research/CESIUM_FORK_PUSH_PLAN.md)
 - [Cesium example standard](../extensions/cesium/docs/CESIUM_EXAMPLE_STANDARD.md)
+- [Unreal version matrix](./UNREAL_VERSION_MATRIX.md)
+- [Unreal Linux notes](./CESIUM_UNREAL_LINUX_NOTES.md)
 - [Unity 6000.5 findings](./CESIUM_UNITY_6000_5_FINDINGS.md)
+- [Unity version matrix](./CESIUM_UNITY_VERSION_MATRIX.md)
 - [Godot 4.7 Windows build notes](./CESIUM_GODOT_WINDOWS_4_7_BUILD_NOTES.md)
+- [Godot Windows version matrix](./CESIUM_GODOT_WINDOWS_VERSION_MATRIX.md)
+- [Godot Linux version matrix](./CESIUM_GODOT_LINUX_VERSION_MATRIX.md)
+- [Godot cross-platform notes](./CESIUM_GODOT_CROSS_PLATFORM_NOTES.md)
+- [Cesium engine matrix](./CESIUM_ENGINE_MATRIX.md)
+- [Cesium plugin lane runner](../tools/run_cesium_plugin_lanes.py)
 
 ## Code Changes By Lane
 
@@ -57,6 +65,7 @@ Where to look:
 
 - `extensions/cesium/tools/prepare_cesium_source_route.py`
 - `extensions/cesium/tools/cesium_example_workflow.py`
+- `extensions/cesium/tools/unreal_linux_lane.py`
 - `docs/CESIUM_PROOF_STRATEGY.md`
 - `docs/UNREAL_VERSION_MATRIX.md`
 
@@ -74,6 +83,9 @@ Known code changes and report updates:
 - source-route prep now stages the real compiled Reinterop assembly
 - Unity 6000.5 editor API drift is captured as a distinct blocker
 - import/compile smoke and failure reporting are normalized
+- Unity version/package drift is tracked in a repo-owned version matrix
+- Unity install discovery now includes the public Unity roots used for host bootstrap
+- Unity native target lanes are carried explicitly as windows, linux, and mac
 
 Lane split:
 
@@ -87,6 +99,7 @@ Where to look:
 - `extensions/cesium/tools/prepare_cesium_source_route.py`
 - `extensions/cesium/tools/cesium_example_workflow.py`
 - `docs/CESIUM_UNITY_6000_5_FINDINGS.md`
+- `docs/CESIUM_UNITY_VERSION_MATRIX.md`
 - `docs/CESIUM_SOURCE_ROUTE.md`
 
 Upstream fork target:
@@ -95,7 +108,7 @@ Upstream fork target:
 
 ### Godot
 
-Godot has both Windows and Linux proof notes now.
+Godot now has Windows and Linux evidence notes plus cross-platform proof notes.
 
 Known code changes and report updates:
 
@@ -116,6 +129,9 @@ Where to look:
 - `extensions/cesium/tools/prepare_cesium_source_route.py`
 - `extensions/cesium/tools/cesium_example_workflow.py`
 - `docs/CESIUM_GODOT_WINDOWS_4_7_BUILD_NOTES.md`
+- `docs/CESIUM_GODOT_WINDOWS_VERSION_MATRIX.md`
+- `docs/CESIUM_GODOT_LINUX_VERSION_MATRIX.md`
+- `docs/CESIUM_GODOT_CROSS_PLATFORM_NOTES.md`
 - `docs/CESIUM_PROOF_STRATEGY.md`
 
 Upstream fork target:
@@ -133,7 +149,8 @@ The repo is now organized enough to branch the upstream fixes separately:
 Recommended fork targets:
 
 - [sheepfling/cesium-unreal](https://github.com/sheepfling/cesium-unreal) for
-  Unreal 5.7, Unreal 5.8, and Unreal Linux source compatibility issues
+  Unreal 5.7, Unreal 5.8, and Unreal Linux source and packaging compatibility
+  issues
 - [sheepfling/cesium-unity](https://github.com/sheepfling/cesium-unity) for
   Unity 6000.5 Reinterop and editor API drift
 - [sheepfling/3D-Tiles-For-Godot](https://github.com/sheepfling/3D-Tiles-For-Godot)
@@ -156,7 +173,7 @@ Yes, we have clear notes for the next agent to pull and fork the right repo:
 - Unity: fork [sheepfling/cesium-unity](https://github.com/sheepfling/cesium-unity),
   using the Unity 6000.5 findings note
 - Godot: fork [sheepfling/3D-Tiles-For-Godot](https://github.com/sheepfling/3D-Tiles-For-Godot),
-  using the Godot 4.7 build notes
+  using the Godot 4.7 build notes, the Windows and Linux matrices, and the cross-platform notes
 
 This repo keeps the orchestration, matrix, and reporting changes.
 The vendor repos get the source-fix PRs.

@@ -8,7 +8,10 @@ Current pure-Cesium Unity example project scaffold:
 Target bar:
 
 - clean project materialization
-- Cesium Unity package installed on the pinned Unity lane
+- self-contained Unity example build lane on the pinned editor
+- pinned Unity lane currently means `6000.5.0f1`
+- the example-project file itself is currently `6000.6.0b2`
+- forward/backward editor drift is tracked in `docs/CESIUM_UNITY_6000_5_FINDINGS.md`
 - one canonical geospatial scene
 - one pure-Cesium scene proof with no FastDIS dependency
 - one rerunnable demo/report lane

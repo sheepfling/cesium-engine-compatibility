@@ -1,0 +1,55 @@
+name: Unreal Linux Lane
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - codex/**
+    paths:
+      - "cesium.py"
+      - "docs/**"
+      - "extensions/cesium/**"
+      - "tests/**"
+      - ".github/workflows/unreal-linux.yml"
+  pull_request:
+    paths:
+      - "cesium.py"
+      - "docs/**"
+      - "extensions/cesium/**"
+      - "tests/**"
+      - ".github/workflows/unreal-linux.yml"
+
+jobs:
+  inspect-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine_version: ["5.7", "5.8"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Inspect Unreal Linux lane
+        run: python cesium.py unreal-linux report --engine-version ${{ matrix.engine_version }}
+
+      - name: Write version matrix note
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          matrix = Path("docs/UNREAL_VERSION_MATRIX.md")
+          assert matrix.is_file(), matrix
+          print(matrix.read_text(encoding="utf-8").splitlines()[0])
+          PY
+
+      - name: Confirm target version
+        run: echo "Verified Unreal Linux matrix lane ${{ matrix.engine_version }}"

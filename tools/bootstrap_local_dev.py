@@ -19,12 +19,13 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import venv
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_ROOT = ROOT / "build" / "tool_bootstrap" / "cesium"
-DEFAULT_DEPS_PREFIX = BOOTSTRAP_ROOT / "python"
+DEFAULT_DEPS_PREFIX = BOOTSTRAP_ROOT / "venv"
 STATE_PATH = BOOTSTRAP_ROOT / "bootstrap_state.json"
 DEFAULT_SMOKE_TARGETS = ("tests/test_cesium_tools.py", "tests/test_bootstrap_local_dev.py")
 
@@ -98,6 +99,12 @@ def prefix_site_packages(prefix: Path) -> Path:
     return _prefix_paths(prefix)["purelib"]
 
 
+def bootstrap_python(prefix: Path) -> Path:
+    if platform.system().lower() == "windows":
+        return prefix / "Scripts" / "python.exe"
+    return prefix / "bin" / "python"
+
+
 def load_state() -> BootstrapState | None:
     if not STATE_PATH.is_file():
         return None
@@ -125,7 +132,7 @@ def detect_bootstrap_readiness(prefix: Path, work_root: Path, requirements: tupl
         requirements=requirements,
     )
     current = load_state()
-    deps_ready = current == expected and prefix_site_packages(prefix).is_dir()
+    deps_ready = current == expected and bootstrap_python(prefix).is_file() and prefix_site_packages(prefix).is_dir()
     work_roots_ready = all((work_root / name).is_dir() for name in ("tmp", "artifacts"))
     state_present = current is not None
     return BootstrapReadiness(
@@ -145,26 +152,37 @@ def write_state(state: BootstrapState) -> None:
     STATE_PATH.write_text(json.dumps(state.to_dict(), indent=2) + "\n", encoding="utf-8")
 
 
+def _ensure_bootstrap_venv(prefix: Path) -> Path:
+    python = bootstrap_python(prefix)
+    if python.is_file():
+        return python
+    prefix.parent.mkdir(parents=True, exist_ok=True)
+    builder = venv.EnvBuilder(with_pip=True, clear=False, symlinks=False, upgrade_deps=False)
+    builder.create(prefix)
+    if not python.is_file():
+        raise SystemExit(f"bootstrap virtualenv did not create expected python at {python}")
+    return python
+
+
 def ensure_dev_dependencies(prefix: Path, requirements: tuple[str, ...]) -> bool:
     current = load_state()
     expected = BootstrapState(
         python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         requirements=requirements,
     )
+    python = bootstrap_python(prefix)
     site_packages = prefix_site_packages(prefix)
-    if current == expected and site_packages.is_dir():
+    if current == expected and python.is_file() and site_packages.is_dir():
         return False
 
-    prefix.mkdir(parents=True, exist_ok=True)
+    python = _ensure_bootstrap_venv(prefix)
     cmd = [
-        sys.executable,
+        str(python),
         "-m",
         "pip",
         "install",
         "--upgrade",
         "--disable-pip-version-check",
-        "--prefix",
-        str(prefix),
         "-e",
         ".[dev]",
     ]
@@ -185,45 +203,49 @@ def ensure_work_roots(work_root: Path) -> dict[str, Path]:
     return roots
 
 
-def build_env(prefix: Path, work_root: Path) -> dict[str, str]:
+def build_env(work_root: Path) -> dict[str, str]:
     env = os.environ.copy()
-    site_packages = prefix_site_packages(prefix)
-    extra_paths = [str(site_packages), str(ROOT)]
-    existing = env.get("PYTHONPATH")
-    if existing:
-        extra_paths.append(existing)
-    env["PYTHONPATH"] = os.pathsep.join(extra_paths)
-    for key, path in ensure_work_roots(work_root).items():
+    roots = ensure_work_roots(work_root)
+    for key, path in roots.items():
         env.setdefault(key, str(path))
-    env["TEMP"] = str(work_root / "tmp")
-    env["TMP"] = str(work_root / "tmp")
+    temp_root = work_root / "tmp"
+    upm_cache_root = temp_root / "UPMCache"
+    upm_config_root = temp_root / "UPMConfig"
+    upm_npm_cache_path = temp_root / "UPMNpmCache"
+    for path in (upm_cache_root, upm_config_root, upm_npm_cache_path):
+        path.mkdir(parents=True, exist_ok=True)
+    env["TEMP"] = str(temp_root)
+    env["TMP"] = str(temp_root)
+    env["UPM_CACHE_ROOT"] = str(upm_cache_root)
+    env["UPM_CONFIG_ROOT"] = str(upm_config_root)
+    env["UPM_NPM_CACHE_PATH"] = str(upm_npm_cache_path)
     return env
 
 
-def build_dev_check_command(dev_check_args: list[str]) -> list[str]:
+def build_dev_check_command(dev_check_args: list[str], *, python_executable: Path | str | None = None) -> list[str]:
     args = list(dev_check_args)
     if args and args[0] == "--":
         args = args[1:]
     if not args:
         args = list(DEFAULT_SMOKE_TARGETS)
-    return [sys.executable, "-m", "pytest", *args]
+    return [str(python_executable or sys.executable), "-m", "pytest", *args]
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--deps-prefix", type=Path, default=DEFAULT_DEPS_PREFIX, help="Prefix directory for local Python dev dependencies")
+    parser.add_argument("--deps-prefix", type=Path, default=DEFAULT_DEPS_PREFIX, help="Virtualenv root for local Python dev dependencies")
     parser.add_argument("--work-root", type=Path, default=None, help="Scratch root for bootstrap temp state and artifacts")
     parser.add_argument("--skip-install", action="store_true", help="Skip installing dev dependencies and only prepare the runtime environment")
     parser.add_argument("--prepare-only", action="store_true", help="Install dev dependencies and scratch roots without running pytest")
     parser.add_argument("dev_check_args", nargs=argparse.REMAINDER, default=[], help="Arguments forwarded to pytest")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.work_root is None:
         args.work_root = _default_work_root()
     return args
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args() if argv is None else parse_args(argv)
     requirements = load_dev_requirements()
     readiness = detect_bootstrap_readiness(args.deps_prefix, args.work_root, requirements)
     print(f"bootstrap state: {readiness.host_state}")
@@ -240,13 +262,15 @@ def main() -> int:
     else:
         print("dev dependencies: skipped")
 
-    env = build_env(args.deps_prefix, args.work_root)
+    env = build_env(args.work_root)
     print("bootstrap work root:", args.work_root)
-    print("bootstrap deps prefix:", args.deps_prefix)
+    print("bootstrap deps venv:", args.deps_prefix)
     if args.prepare_only:
         return 0
 
-    command = build_dev_check_command(args.dev_check_args)
+    bootstrap_python_executable = bootstrap_python(args.deps_prefix)
+    command_python = bootstrap_python_executable if bootstrap_python_executable.is_file() else sys.executable
+    command = build_dev_check_command(args.dev_check_args, python_executable=command_python)
     print("+", " ".join(command))
     completed = subprocess.run(command, cwd=ROOT, env=env, text=True)
     return completed.returncode
