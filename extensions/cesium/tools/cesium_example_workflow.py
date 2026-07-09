@@ -268,6 +268,48 @@ def _workflow_commands(engine: str) -> dict[str, str]:
     }
 
 
+def _startup_health_payload(engine: str, native_target: str | None = None) -> dict[str, object]:
+    target = native_target or ("windows" if engine in {"unreal", "unity", "godot"} else "windows")
+    if engine == "godot" and target == "windows":
+        command = "cesium-godot-aggressive-launcher --native-target windows --max-versions 1"
+        capture_focus = [
+            "startup_health section from the launcher packet",
+            "shader-cache bootstrap success or failure",
+            "extension registration before visual proof",
+            "early crash signature capture before screenshot work",
+        ]
+    elif engine == "godot":
+        command = f"cesium-example doctor --engine godot --native-target {target}"
+        capture_focus = [
+            "native target discovery",
+            "editor/version ordering",
+            "project marker and addon health",
+            "the first check before screenshot capture",
+        ]
+    elif engine in {"unreal", "unity"}:
+        command = f"cesium-example doctor --engine {engine}" + (f" --native-target {target}" if native_target else "")
+        capture_focus = [
+            "source route readiness",
+            "example scaffold health",
+            "project marker discovery",
+            "the first check before screenshot capture",
+        ]
+    else:
+        command = f"cesium-example doctor --engine {engine}" + (f" --native-target {target}" if native_target else "")
+        capture_focus = [
+            "source route readiness",
+            "example scaffold health",
+            "project marker discovery",
+            "the first check before screenshot capture",
+        ]
+    return {
+        "command": command,
+        "capture_focus": capture_focus,
+        "status": "commandable",
+        "native_target": native_target,
+    }
+
+
 def _godot_windows_version_lane_role(version: str) -> str:
     if version == "4.7":
         return "current baseline"
@@ -398,6 +440,7 @@ def report_payload(engine: str, *, native_target: str | None = None) -> dict[str
         "mode": "report",
         **doctor,
         "schema": "cesium.example_lane_report.v1",
+        "startup_health": _startup_health_payload(engine, native_target=native_target),
         "readiness": {
             "source_route_ready": doctor["source_checkout"] is not None and Path(str(doctor["source_checkout"])).is_dir(),
             "example_scaffold_ready": Path(str(doctor["example_root"])).is_dir() and Path(str(doctor["project_marker"])).is_file(),
@@ -413,11 +456,14 @@ def report_payload(engine: str, *, native_target: str | None = None) -> dict[str
 def full_payload(engine: str, *, native_target: str | None = None) -> dict[str, object]:
     report = report_payload(engine, native_target=native_target)
     workflow = dict(report["workflow_commands"])
+    startup_health = report.get("startup_health")
+    startup_health_command = startup_health.get("command") if isinstance(startup_health, dict) else None
     return {
         **report,
         "schema": "cesium.example_lane_full.v1",
         "mode": "full",
         "execution_plan": [
+            startup_health_command,
             workflow["prepare_source_route"],
             workflow["doctor"],
             workflow["report"],
@@ -452,6 +498,13 @@ def render_markdown(payload: dict[str, object]) -> str:
         for check in payload["checks"]:
             lines.append(f"- `{check['name']}`: `{check['status']}`")
             lines.append(f"  detail: `{check['detail']}`")
+    if payload.get("startup_health") is not None:
+        lines.extend(["", "## Startup Health", ""])
+        startup_health = payload["startup_health"]
+        lines.append(f"- command: `{startup_health.get('command')}`")
+        lines.append(f"- status: `{startup_health.get('status')}`")
+        for focus in startup_health.get("capture_focus", []):
+            lines.append(f"- focus: {focus}")
     if payload.get("next_steps"):
         lines.extend(["", "## Next Steps", ""])
         for step in payload["next_steps"]:
@@ -501,6 +554,13 @@ def print_text(payload: dict[str, object]) -> None:
     print("checks:")
     for check in payload.get("checks", []):
         print(f"  - {check['name']}: {check['status']} ({check['detail']})")
+    if payload.get("startup_health") is not None:
+        startup_health = payload["startup_health"]
+        print("startup_health:")
+        print(f"  - command: {startup_health.get('command')}")
+        print(f"  - status: {startup_health.get('status')}")
+        for focus in startup_health.get("capture_focus", []):
+            print(f"  - focus: {focus}")
     if payload.get("next_steps"):
         print("next:")
         for step in payload["next_steps"]:

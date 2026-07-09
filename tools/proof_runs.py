@@ -15,6 +15,16 @@ def next_proof_runs() -> list[dict[str, object]]:
             ],
         },
         {
+            "surface": "Unreal Windows Startup Health",
+            "command": "cesium-example doctor --engine unreal",
+            "capture_focus": [
+                "source route readiness",
+                "example scaffold health",
+                "project marker discovery",
+                "first check before Windows visual proof",
+            ],
+        },
+        {
             "surface": "Cross-Platform Planned",
             "command": "cesium-plugin-lanes --dry-run --lanes cross-platform-planned",
             "capture_focus": [
@@ -35,6 +45,16 @@ def next_proof_runs() -> list[dict[str, object]]:
             ],
         },
         {
+            "surface": "Unity Windows Startup Health",
+            "command": "cesium-example doctor --engine unity",
+            "capture_focus": [
+                "source route readiness",
+                "example scaffold health",
+                "project marker discovery",
+                "first check before Windows visual proof",
+            ],
+        },
+        {
             "surface": "Unity Docker",
             "command": "cesium-unity-linux-docker --native-target linux",
             "capture_focus": [
@@ -52,6 +72,26 @@ def next_proof_runs() -> list[dict[str, object]]:
                 "container logs",
                 "inner report payload",
                 "Linux target proof route",
+            ],
+        },
+        {
+            "surface": "Godot Windows Startup Health",
+            "command": "cesium-godot-aggressive-launcher --native-target windows --max-versions 1",
+            "capture_focus": [
+                "startup_health section from the launcher packet",
+                "shader-cache bootstrap success or failure",
+                "extension registration before visual proof",
+                "early crash signature capture before screenshot work",
+            ],
+        },
+        {
+            "surface": "Godot Linux Proof",
+            "command": "cesium-godot-aggressive-linux-launcher --dry-run",
+            "capture_focus": [
+                "installed Linux versions in newest-first order",
+                "per-attempt screenshot proof paths",
+                "container wrapper and inner launcher split",
+                "the screenshot proof contract for the Linux lane",
             ],
         },
         {
@@ -82,6 +122,51 @@ def next_proof_runs() -> list[dict[str, object]]:
                 "host architecture",
                 "addon revision",
                 "macOS import/open or build proof",
+            ],
+        },
+        {
+            "surface": "Godot macOS Proof",
+            "command": "cesium-godot-aggressive-launcher --native-target mac --dry-run",
+            "capture_focus": [
+                "macOS app bundle discovery",
+                "Intel and Apple Silicon proof-ready ordering",
+                "per-attempt screenshot contract",
+                "the same launcher/report structure as Windows and Linux",
+            ],
+        },
+        {
+            "surface": "Visual Proof",
+            "command": "cesium-visual-proof",
+            "capture_focus": [
+                "Windows-first capture order",
+                "canonical camera poses",
+                "proxy-earth and cesium-earth variants",
+                "engine-specific screenshot output roots",
+                "macOS arm64 and x86_64 separation",
+                "normalized Unreal Saved/Screenshots output into the shared packet root",
+                "the final screenshot packet contract before real capture automation lands",
+            ],
+        },
+        {
+            "surface": "Unreal Visual Proof",
+            "command": "UnrealEditor-Cmd.exe CesiumVanillaExample.uproject -ExecCmds=\"Automation RunTests Cesium.VisualProof.Windows.ProxyEarth,Cesium.VisualProof.Windows.CesiumEarth\"",
+            "capture_focus": [
+                "Cesium.VisualProof.Windows.ProxyEarth automation lane",
+                "Cesium.VisualProof.Windows.CesiumEarth automation lane",
+                "Saved/Screenshots/WindowsEditor capture output",
+                "cesium-visual-proof-normalize into artifacts/reports/cesium_visual_proof/unreal/windows/x86_64",
+                "canonical proxy-earth and cesium-earth camera poses",
+                "the Unreal Windows proof runner that now matches the other engines",
+            ],
+        },
+        {
+            "surface": "Visual Proof Compare",
+            "command": "cesium-visual-proof-compare",
+            "capture_focus": [
+                "perceptual image drift detection",
+                "black or gray frame failure detection",
+                "cross-engine canonical shot comparisons",
+                "the screenshot quality gate that defends the packet",
             ],
         },
     ]
