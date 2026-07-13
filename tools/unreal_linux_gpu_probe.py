@@ -42,8 +42,14 @@ def probe(image: str, gpus: str) -> dict[str, Any]:
         returncode = None
 
     vulkan_section = output.split("__VULKANINFO__", 1)[-1]
-    cpu_only = "PHYSICAL_DEVICE_TYPE_CPU" in vulkan_section
-    has_vulkan_device = "deviceName" in vulkan_section and not cpu_only
+    has_vulkan_device = any(
+        device_type in vulkan_section
+        for device_type in (
+            "PHYSICAL_DEVICE_TYPE_DISCRETE_GPU",
+            "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU",
+        )
+    )
+    cpu_only = "PHYSICAL_DEVICE_TYPE_CPU" in vulkan_section and not has_vulkan_device
     return {
         "schema": "cesium.unreal_linux_gpu_probe.v1",
         "generated_at": datetime.now(UTC).isoformat(),

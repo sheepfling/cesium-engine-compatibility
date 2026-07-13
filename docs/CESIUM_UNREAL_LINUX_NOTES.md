@@ -102,15 +102,33 @@ For any Linux proof run, record:
 ## Next Step
 
 The Linux visual-proof lane has now reached Unreal runtime startup, but it is
-not green on this Docker host. Unreal 5.8 requires a Vulkan device satisfying
-the `VP_UE_Vulkan_SM5` profile; the container exposes Mesa llvmpipe, which is
-rejected by that profile. Unreal 5.8 also reports that desktop OpenGL is no
-longer supported, so `-opengl` is not a valid fallback.
+not green on this host. WSL-native Vulkan now exposes the host-provided GPUs
+through Mesa `dzn`/D3D12, including the NVIDIA device, while Docker Desktop
+and the WSL-local Docker daemon both fail to create a D3D12 device inside a
+container. This means the current viable execution boundary is the WSL distro
+itself, not a Linux container.
+
+The WSL-native Unreal 5.8 run reaches the real NVIDIA device and then crashes
+while Unreal resets its timestamp query pool:
+
+```text
+libvulkan_dzn.so -> FVulkanQueryPool::Reset -> FVulkanDynamicRHI::InitInstance
+```
+
+That is a Vulkan `dzn`/Unreal runtime compatibility blocker. It is not a
+missing GPU, a Cesium tileset-load failure, or acceptable visual proof. The
+launcher must fail closed when this signature occurs and must not publish a
+screenshot packet.
 
 The current runtime logs are:
 
 - `artifacts/reports/unreal_visual_proof/linux/unreal_linux_proxy_5.8.log`
 - `artifacts/reports/unreal_visual_proof/linux/unreal_linux_proxy_5.8_llvmpipe.log`
+
+The WSL-native NVIDIA attempt is recorded in
+`artifacts/reports/unreal_visual_proof/linux/unreal_wsl_proxy_norhi.log`.
+The WSL-native control attempt is recorded in
+`artifacts/reports/unreal_visual_proof/linux/unreal_wsl_proxy_5.8.log`.
 
 Both runs correctly stopped before screenshot capture. This is a host
 renderer-capability blocker, not evidence that Cesium tiles failed to load.
@@ -133,6 +151,11 @@ cesium-unreal-linux-gpu-doctor --distro Ubuntu --gpus all
 `--gpus all` delegates device selection to Docker. The report records the
 actual host GPU and Vulkan device, without assuming NVIDIA, RTX 5080, or any
 other specific model.
+
+The doctor reports `partial` when WSL has a non-CPU Vulkan device but Docker
+does not. That is the expected state for this WSLg setup and means the next
+runtime experiment should run directly in WSL. A `pass` still requires both
+WSL and Docker to expose a render-capable Vulkan device.
 
 Current follow-up:
 

@@ -26,7 +26,13 @@ def _run(command: list[str], timeout: int = 120) -> dict[str, Any]:
 
 
 def _has_render_gpu(output: str) -> bool:
-    return "deviceName" in output and "PHYSICAL_DEVICE_TYPE_CPU" not in output
+    return any(
+        device_type in output
+        for device_type in (
+            "PHYSICAL_DEVICE_TYPE_DISCRETE_GPU",
+            "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU",
+        )
+    )
 
 
 def build_payload(distro: str, image: str, gpus: str) -> dict[str, Any]:
@@ -45,10 +51,23 @@ def build_payload(distro: str, image: str, gpus: str) -> dict[str, Any]:
     docker = unreal_linux_gpu_probe.probe(image, gpus)
     wsl_render = _has_render_gpu(wsl["output"])
     docker_render = bool(docker.get("has_vulkan_device"))
+    if wsl_render and docker_render:
+        status = "pass"
+        next_step = "Run Unreal Linux visual proof with the Docker-selected Vulkan device."
+    elif wsl_render:
+        status = "partial"
+        next_step = (
+            "Run Unreal directly inside the WSL distro with the WSL-selected Vulkan device. "
+            "Docker render passthrough is not available on this host."
+        )
+    else:
+        status = "fail"
+        next_step = "Install or enable the WSL graphics/Vulkan bridge, then rerun this doctor before launching Unreal."
+
     return {
         "schema": "cesium.unreal_linux_gpu_doctor.v1",
         "generated_at": datetime.now(UTC).isoformat(),
-        "status": "pass" if wsl_render and docker_render else "fail",
+        "status": status,
         "selection_policy": "Use the host-provided GPU; no model or vendor is hardcoded.",
         "host_cuda": host,
         "wsl_vulkan": {**wsl, "has_render_gpu": wsl_render},
@@ -62,11 +81,7 @@ def build_payload(distro: str, image: str, gpus: str) -> dict[str, Any]:
             )
             if failed
         ],
-        "next_step": (
-            "Run Unreal Linux visual proof with the Docker-selected Vulkan device."
-            if wsl_render and docker_render
-            else "Install or enable the WSL graphics/Vulkan bridge, then rerun this doctor before launching Unreal."
-        ),
+        "next_step": next_step,
     }
 
 
