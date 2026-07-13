@@ -54,12 +54,14 @@ CONTRACTS: tuple[dict[str, Any], ...] = (
             "Saved/Screenshots/WindowsEditor",
             "visual_proof_manifest.json",
             "proxy_overview.png",
-            "Cesium.VisualProof.Windows.ProxyEarth",
+            "Cesium.VisualProof.",
         ),
         "required_harness_phrases": (
             "IMPLEMENT_SIMPLE_AUTOMATION_TEST",
-            "Cesium.VisualProof.Windows.ProxyEarth",
-            "Cesium.VisualProof.Windows.CesiumEarth",
+            "CESIUM_VISUAL_PROOF_PLATFORM",
+            "Cesium.VisualProof.",
+            "ProxyEarth",
+            "CesiumEarth",
         ),
         "required_support_phrases": (
             "FScreenshotRequest::RequestScreenshot",

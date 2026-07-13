@@ -3400,16 +3400,18 @@ def test_validate_visual_proof_contracts_includes_unreal_harness(monkeypatch: py
                 "harness_path": harness_path,
                 "support_path": support_path,
                 "required_phrases": (
-                    "Saved/Screenshots/WindowsEditor",
-                    "visual_proof_manifest.json",
-                    "proxy_overview.png",
-                    "Cesium.VisualProof.Windows.ProxyEarth",
+                        "Saved/Screenshots/WindowsEditor",
+                        "visual_proof_manifest.json",
+                        "proxy_overview.png",
+                        "Cesium.VisualProof.",
                 ),
-                "required_harness_phrases": (
-                    "IMPLEMENT_SIMPLE_AUTOMATION_TEST",
-                    "Cesium.VisualProof.Windows.ProxyEarth",
-                    "Cesium.VisualProof.Windows.CesiumEarth",
-                ),
+                    "required_harness_phrases": (
+                        "IMPLEMENT_SIMPLE_AUTOMATION_TEST",
+                        "CESIUM_VISUAL_PROOF_PLATFORM",
+                        "Cesium.VisualProof.",
+                        "ProxyEarth",
+                        "CesiumEarth",
+                    ),
                 "required_support_phrases": (
                     "FScreenshotRequest::RequestScreenshot",
                     "LoadTestScreenshotCommand::Update",
