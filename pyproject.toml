@@ -24,6 +24,7 @@ cesium-godot-aggressive-linux-launcher = "tools.godot_aggressive_launcher_linux_
 cesium-host-inventory = "tools.build_cesium_host_inventory:main"
 cesium-unreal-linux = "extensions.cesium.tools.unreal_linux_lane:main"
 cesium-unreal-linux-docker = "extensions.cesium.tools.unreal_linux_docker:main"
+cesium-unreal-linux-gpu-probe = "tools.unreal_linux_gpu_probe:main"
 cesium-godot-linux-docker = "extensions.cesium.tools.godot_linux_docker:main"
 cesium-godot-example-build = "tools.build_godot_example:main"
 cesium-unity-linux-docker = "extensions.cesium.tools.unity_linux_docker:main"

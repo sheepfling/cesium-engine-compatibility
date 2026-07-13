@@ -118,6 +118,16 @@ The next meaningful step is to rerun the same lane on a Linux host or Docker
 runtime with GPU/Vulkan passthrough and then apply the six-image comparison
 gate.
 
+Run the hardware-agnostic preflight with:
+
+```text
+cesium-unreal-linux-gpu-probe --gpus all
+```
+
+`--gpus all` delegates device selection to Docker. The report records the
+actual host GPU and Vulkan device, without assuming NVIDIA, RTX 5080, or any
+other specific model.
+
 Current follow-up:
 
 - launcher Unreal installs are good enough for inspection and report lanes
