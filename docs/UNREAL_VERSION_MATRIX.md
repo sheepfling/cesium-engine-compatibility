@@ -25,6 +25,11 @@ The current matrix we can defend from the repo evidence is:
 | 5.7 | current baseline | Confirm source checkout, plugin packaging, and editor-open behavior against the pinned 5.7-era lane. |
 | 5.8 | forward verification | Confirm that Linux host/toolchain alignment still works on the newer 5.8 lane without mixing in Windows-only assumptions. |
 
+The current host has a green Docker build for both Linux versions. This is
+plugin packaging/build evidence, not Linux editor or runtime visual evidence.
+The exact 5.8 log is
+`artifacts/reports/unreal_linux_docker/cesium_unreal_linux_build_5.8.log`.
+
 ## What The Combined Packet Should Say
 
 - the Cesium for Unreal source anchor is `2.28.0`

@@ -60,6 +60,15 @@ Observed result:
   length issues
 - the public archive remains an evidence input rather than the thing that makes
   the build green
+- the 5.8 run is recorded in
+  `artifacts/reports/unreal_linux_docker/cesium_unreal_linux_build_5.8.log`
+  and contains `Result: Succeeded`, `BUILD SUCCESSFUL`, and `ExitCode=0`
+- the 5.8 source checkout used the fork branch `fork/unreal-57-58-verify`
+  through commits `3275999d` and `da44a289`; those remove Clang 20
+  warnings-as-errors in the Unreal Linux compile path
+- the Docker client wrapper exceeded its host-side wait while the successful
+  container was still being reaped, so the build log is the authoritative
+  result for this run; the container was cleaned up afterward
 
 Follow-up evidence worth keeping:
 

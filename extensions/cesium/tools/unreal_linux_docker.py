@@ -11,6 +11,7 @@ import re
 import shlex
 import shutil
 import tempfile
+import time
 from pathlib import Path
 import subprocess
 import zipfile
@@ -28,7 +29,12 @@ from extensions.cesium.tools import linux_docker_runner as docker_runner
 DEFAULT_IMAGE = "cesium-linux-proof:ubuntu24.04"
 DEFAULT_PLATFORM = "linux/amd64"
 DEFAULT_PROFILE = ROOT / "tools" / "unreal_linux_profiles" / "ubuntu_24_04_ue58.env"
-DEFAULT_STAGE_ROOT = Path(tempfile.gettempdir()) / "cesium_unreal_linux"
+DEFAULT_STAGE_ROOT = Path(
+    os.environ.get(
+        "CESIUM_UNREAL_LINUX_STAGE_ROOT",
+        "C:/tmp/cul" if os.name == "nt" else str(Path(tempfile.gettempdir()) / "cul"),
+    )
+)
 DEFAULT_DOCKER_LOG_DIR = ROOT / "artifacts" / "reports" / "unreal_linux_docker"
 DEFAULT_PRESERVE_ROOT = ROOT / "artifacts" / "preserved"
 DEFAULT_CONTAINER_NAME_PREFIX = "cesium-unreal-linux-proof"
@@ -388,9 +394,18 @@ def _stage_unreal_linux_archive(archive: Path, *, engine_version: str | None = N
             if member.is_dir():
                 extracted_path.mkdir(parents=True, exist_ok=True)
                 continue
-            extracted_path.parent.mkdir(parents=True, exist_ok=True)
-            with zf.open(member) as source, extracted_path.open("wb") as target:
-                shutil.copyfileobj(source, target)
+            for attempt in range(3):
+                try:
+                    extracted_path.parent.mkdir(parents=True, exist_ok=True)
+                    with zf.open(member) as source, extracted_path.open("wb") as target:
+                        shutil.copyfileobj(source, target)
+                    break
+                except FileNotFoundError:
+                    if attempt == 2:
+                        raise
+                    # Windows indexing/antivirus can briefly race nested ZIP extraction.
+                    extracted_path.parent.mkdir(parents=True, exist_ok=True)
+                    time.sleep(0.05 * (attempt + 1))
     return stage_root
 
 
