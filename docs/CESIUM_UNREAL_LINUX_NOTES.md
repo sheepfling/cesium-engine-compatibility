@@ -124,6 +124,12 @@ Run the hardware-agnostic preflight with:
 cesium-unreal-linux-gpu-probe --gpus all
 ```
 
+For the combined Windows/WSL/Docker diagnosis, use:
+
+```text
+cesium-unreal-linux-gpu-doctor --distro Ubuntu --gpus all
+```
+
 `--gpus all` delegates device selection to Docker. The report records the
 actual host GPU and Vulkan device, without assuming NVIDIA, RTX 5080, or any
 other specific model.
