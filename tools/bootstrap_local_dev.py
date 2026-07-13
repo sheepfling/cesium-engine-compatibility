@@ -52,7 +52,7 @@ class BootstrapReadiness:
 
 def _default_work_root() -> Path:
     if platform.system().lower() == "windows":
-        preferred = Path("C:/tmp/cesium_dev")
+        preferred = Path(tempfile.gettempdir()) / "cesium_dev"
         if _windows_short_root_available(preferred.parent):
             return preferred
         return ROOT / "build" / "work" / "cesium_dev"

@@ -2,6 +2,10 @@
 
 This note keeps the repo-owned Unreal lanes explicit, especially for Linux.
 
+The current Cesium for Unreal source anchor is `2.28.0`, as recorded in
+`external/cesium/cesium-unreal/CesiumForUnreal.uplugin`. Use that version label
+in the PR narrative and keep the exact checkout commit in the fork workpack.
+
 The important split is not just Windows versus Linux. It is also the version
 boundary between the current baseline lane and the forward-verification lane.
 
@@ -23,6 +27,7 @@ The current matrix we can defend from the repo evidence is:
 
 ## What The Combined Packet Should Say
 
+- the Cesium for Unreal source anchor is `2.28.0`
 - Windows and Linux both have explicit Unreal version coverage for 5.7 and 5.8
 - Linux remains a separate Docker-backed proof path, not a Windows surrogate
 - the version matrix is the place to record the first failing release if a newer

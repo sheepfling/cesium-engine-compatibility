@@ -6,6 +6,8 @@ public class CesiumVanillaExampleEditorTarget : TargetRules
 {
     public CesiumVanillaExampleEditorTarget(TargetInfo Target) : base(Target)
     {
+        // Version marker: the editor target follows the same Unreal 5.7/5.8
+        // lane split used in the repo matrix and Linux notes.
         Type = TargetType.Editor;
         DefaultBuildSettings = ResolveBuildSettingsVersion();
         IncludeOrderVersion = ResolveIncludeOrderVersion();

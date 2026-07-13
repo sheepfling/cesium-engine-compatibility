@@ -77,17 +77,14 @@ def _unity_inventory() -> dict[str, Any]:
 
 def _unreal_inventory() -> dict[str, Any]:
     public_roots = engine_root_discovery.public_engine_search_roots()["unreal"]
+    mac_public_roots = [str(path) for path in public_roots if platform.system().lower() == "darwin"]
+    windows_platform_support_roots = [root / "Engine" / "Platforms" / "Linux" for root in public_roots]
     return {
         "public_search_roots": [str(path) for path in public_roots],
+        "mac_public_roots": mac_public_roots,
         "linux_roots": [str(path) for path in engine_root_discovery.discover_unreal_linux_roots()],
         "linux_archives": [str(path) for path in engine_root_discovery.discover_unreal_linux_archives()],
-        "windows_platform_support_roots": [
-            str(path)
-            for path in [
-                Path(r"C:\Users\Public\Unreal") / "Engine" / "Platforms" / "Linux",
-                Path(r"C:\Program Files\Epic Games") / "Engine" / "Platforms" / "Linux",
-            ]
-        ],
+        "windows_platform_support_roots": [str(path) for path in windows_platform_support_roots],
     }
 
 

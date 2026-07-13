@@ -38,11 +38,18 @@ def _available_docker() -> bool:
 def _unreal_audit() -> dict[str, object]:
     report = unreal_linux_lane.report_payload()
     versions = report.get("version_matrix", [])
+    lane_split = report.get("lane_split", {}) if isinstance(report.get("lane_split"), dict) else {}
     linux_docker_build_status = str(report.get("build_status") or "unknown")
     linux_docker_ready = _available_docker() and isinstance(versions, list) and len(versions) > 0
     return {
         "version_count": len(versions) if isinstance(versions, list) else 0,
         "versions": [str(row.get("engine_version") or "") for row in versions if isinstance(row, dict)],
+        "lane_split": {
+            "baseline_version": str(lane_split.get("baseline_version") or "5.7"),
+            "baseline_role": str(lane_split.get("baseline_role") or "current baseline"),
+            "forward_version": str(lane_split.get("forward_version") or "5.8"),
+            "forward_role": str(lane_split.get("forward_role") or "forward verification"),
+        },
         "docker_available": _available_docker(),
         "docker_preflight": "available" if _available_docker() else "missing-docker-cli",
         "linux_prereq_checker": "present",
@@ -365,6 +372,11 @@ def render_markdown(payload: dict[str, object]) -> str:
             lines.append(f"  - {focus}")
     lines.extend(["", "## Unreal", ""])
     lines.append(f"- versions: `{', '.join(payload['unreal']['versions']) or 'none'}`")
+    if payload["unreal"].get("lane_split"):
+        lane_split = payload["unreal"]["lane_split"]
+        lines.append(
+            f"- lane_split: `{lane_split['baseline_version']} {lane_split['baseline_role']} / {lane_split['forward_version']} {lane_split['forward_role']}`"
+        )
     lines.append(f"- docker_preflight: `{payload['unreal']['docker_preflight']}`")
     lines.append(f"- linux_docker_report_status: `{payload['unreal']['linux_docker_report_status']}`")
     lines.append(f"- linux_docker_build_status: `{payload['unreal']['linux_docker_build_status']}`")

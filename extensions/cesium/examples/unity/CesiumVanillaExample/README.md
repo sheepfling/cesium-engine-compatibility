@@ -13,6 +13,18 @@ Current purpose:
   example-project file, now `6000.6.0b2`, while the baseline proof lane remains
   `6000.5.0f1`
 
+Version-specific markers:
+
+- `ProjectSettings/ProjectVersion.txt` is pinned to `6000.6.0b2` for the current example project.
+- `Assets/CesiumVisualProofCapture.cs` is the version-aware proof harness for the Unity visual lane and writes `visual_proof_manifest.json` beside the six canonical PNGs.
+- The lane contract lives in [`VisualProofContract.md`](./VisualProofContract.md).
+- The baseline proof lane remains `6000.5.0f1`, so version drift should be called out in the notes when that baseline changes.
+- Generated editor/runtime state stays out of the repo under `Library/`, `Logs/`, `Temp/`, `UserSettings/`, `build/`, and `Assets/CesiumExampleBuild/Generated/`.
+- If we need to keep a version-specific Unity variant around, it should be split into a separate project workpack rather than mixed into the base scaffold.
+
+See [`docs/CESIUM_PROJECT_SEGREGATION.md`](../../../../../docs/CESIUM_PROJECT_SEGREGATION.md)
+for the repo-wide split rule.
+
 Current scaffold contents:
 
 - `Packages/manifest.json`

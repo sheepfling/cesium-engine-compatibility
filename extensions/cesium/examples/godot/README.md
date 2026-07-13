@@ -16,3 +16,6 @@ Target bar:
 - one pure-Cesium scene proof with no FastDIS dependency
 - one rerunnable demo/report lane
 - one export/build lane for Windows and Linux that uses `export_presets.cfg`
+
+If this lane needs a version-specific project variant, keep it in a separate
+project root and follow [`docs/CESIUM_PROJECT_SEGREGATION.md`](../../../../docs/CESIUM_PROJECT_SEGREGATION.md).

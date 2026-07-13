@@ -9,8 +9,8 @@ evidence on both Apple Silicon `arm64` and Intel `x86_64`.
 
 ## What We Can Reuse
 
-The Packet-Stoat macOS branch pointed at three useful ideas that carry over
-cleanly here:
+The earlier cross-platform macOS work pointed at three useful ideas that carry
+over cleanly here:
 
 1. keep the source-route prep flexible enough to point at fork remotes
 2. keep macOS proof notes separate from Windows and Linux proof notes

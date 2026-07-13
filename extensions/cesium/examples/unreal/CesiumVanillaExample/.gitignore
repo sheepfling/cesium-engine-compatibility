@@ -1,0 +1,18 @@
+# Unreal editor/runtime state is per-machine and must stay out of the repo.
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Plugins/CesiumForUnreal/
+Saved/
+.vs/
+*.sln
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+*.opensdf
+*.sdf
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

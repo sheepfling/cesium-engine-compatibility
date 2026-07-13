@@ -6,6 +6,8 @@ public class CesiumVanillaExampleTarget : TargetRules
 {
     public CesiumVanillaExampleTarget(TargetInfo Target) : base(Target)
     {
+        // Version marker: this sample target is expected to stay aligned with
+        // the repo's Unreal 5.7 baseline and 5.8 forward-verification lanes.
         Type = TargetType.Game;
         DefaultBuildSettings = ResolveBuildSettingsVersion();
         ExtraModuleNames.AddRange(new List<string>

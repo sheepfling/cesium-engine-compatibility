@@ -22,10 +22,6 @@ RUNTIME_BUILD = SOURCE_CHECKOUT / "Source" / "CesiumRuntime" / "CesiumRuntime.Bu
 EDITOR_BUILD = SOURCE_CHECKOUT / "Source" / "CesiumEditor" / "CesiumEditor.Build.cs"
 LINUX_DOC = SOURCE_CHECKOUT / "Documentation" / "developer-setup-linux.md"
 LANE_DOC = ROOT / "docs" / "CESIUM_UNREAL_LINUX_NOTES.md"
-LINUX_PLATFORM_SUPPORT_SEARCH_ROOTS = (
-    Path(r"C:\Users\Public\Unreal") / "Engine" / "Platforms" / "Linux",
-    Path(r"C:\Program Files\Epic Games") / "Engine" / "Platforms" / "Linux",
-)
 VERSION_MATRIX = [
     {
         "engine_version": "5.7",
@@ -82,7 +78,11 @@ def _check_path(name: str, path: Path, *, required: bool = True) -> dict[str, ob
 
 
 def _discover_linux_platform_support_roots() -> list[Path]:
-    return [candidate for candidate in LINUX_PLATFORM_SUPPORT_SEARCH_ROOTS if candidate.is_dir()]
+    roots = [
+        root / "Engine" / "Platforms" / "Linux"
+        for root in public_engine_search_roots()["unreal"]
+    ]
+    return [candidate for candidate in roots if candidate.is_dir()]
 
 
 def _latest_report_log(prefix: str, *, engine_version: str | None = None) -> Path | None:
@@ -172,6 +172,14 @@ def report_payload(*, engine_version: str | None = None) -> dict[str, object]:
     source_commit = _git(SOURCE_CHECKOUT, ["rev-parse", "HEAD"])
     linux_ready = all(check["status"] == "ok" for check in checks)
     status = "ok" if linux_ready else "needs-attention"
+    lane_split = {
+        "baseline_version": "5.7",
+        "forward_version": "5.8",
+        "baseline_role": "current baseline",
+        "forward_role": "forward verification",
+        "baseline_focus": "Confirm source checkout, plugin packaging, and editor-open behavior against the pinned 5.7-era lane.",
+        "forward_focus": "Confirm that Linux host/toolchain alignment still works on the newer 5.8 lane without mixing in Windows-only assumptions.",
+    }
     return {
         "schema": "cesium.unreal_linux_lane.v1",
         "generated_at": _now(),
@@ -179,6 +187,7 @@ def report_payload(*, engine_version: str | None = None) -> dict[str, object]:
         "status": status,
         "selected_version": engine_version,
         "selected_version_details": selected_version,
+        "lane_split": lane_split,
         "source_checkout": str(SOURCE_CHECKOUT),
         "project_root": str(PROJECT_ROOT),
         "source_branch": source_branch,
@@ -186,7 +195,10 @@ def report_payload(*, engine_version: str | None = None) -> dict[str, object]:
         "version_matrix": VERSION_MATRIX,
         "public_search_roots": [str(path) for path in public_engine_search_roots()["unreal"]],
         "public_unreal_archives": [str(path) for path in discover_unreal_linux_archives()],
-        "linux_platform_support_search_roots": [str(path) for path in LINUX_PLATFORM_SUPPORT_SEARCH_ROOTS],
+        "linux_platform_support_search_roots": [
+            str(root / "Engine" / "Platforms" / "Linux")
+            for root in public_engine_search_roots()["unreal"]
+        ],
         "linux_platform_support_roots": [str(path) for path in linux_platform_support_roots],
         "linux_platform_support_ready": bool(linux_platform_support_roots),
         **build_evidence,
@@ -230,6 +242,13 @@ def render_markdown(payload: dict[str, object]) -> str:
         row = payload["selected_version_details"]
         lines.append(f"- `{row['engine_version']}`: `{row['lane_role']}`")
         lines.append(f"  focus: `{row['focus']}`")
+    if payload.get("lane_split") is not None:
+        lines.extend(["", "## Lane Split", ""])
+        split = payload["lane_split"]
+        lines.append(f"- baseline: `{split['baseline_version']}` / `{split['baseline_role']}`")
+        lines.append(f"  focus: `{split['baseline_focus']}`")
+        lines.append(f"- forward: `{split['forward_version']}` / `{split['forward_role']}`")
+        lines.append(f"  focus: `{split['forward_focus']}`")
     if payload.get("checks"):
         lines.extend(["", "## Checks", ""])
         for check in payload["checks"]:
@@ -317,6 +336,11 @@ def print_text(payload: dict[str, object]) -> None:
         print("version_matrix:")
         for row in payload["version_matrix"]:
             print(f"  - {row['engine_version']}: {row['lane_role']} ({row['focus']})")
+    if payload.get("lane_split") is not None:
+        split = payload["lane_split"]
+        print("lane_split:")
+        print(f"  - baseline: {split['baseline_version']} ({split['baseline_role']})")
+        print(f"  - forward: {split['forward_version']} ({split['forward_role']})")
     if payload.get("public_search_roots"):
         print("public_search_roots:")
         for root in payload["public_search_roots"]:

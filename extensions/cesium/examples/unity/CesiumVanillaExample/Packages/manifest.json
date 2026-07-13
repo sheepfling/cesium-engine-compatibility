@@ -1,3 +1,10 @@
 {
-  "dependencies": {}
+  "dependencies": {
+    "com.cesium.unity": "file:../../../../../../external/cesium/cesium-unity",
+    "com.unity.ugui": "2.5.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.modules.unitywebrequesttexture": "1.0.0",
+    "com.unity.modules.screencapture": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0"
+  }
 }

@@ -1,0 +1,17 @@
+# Unity editor/runtime state is per-machine and must stay out of the repo.
+Library/
+Logs/
+Temp/
+UserSettings/
+build/
+Obj/
+*.csproj
+*.sln
+*.user
+*.userprefs
+*.suo
+*.pidb
+
+# The proof harness may generate per-version capture helpers here.
+Assets/CesiumExampleBuild/Generated/
+Assets/CesiumExampleBuild/Generated.meta

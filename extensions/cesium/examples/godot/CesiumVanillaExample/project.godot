@@ -1,5 +1,7 @@
 ; Engine configuration file.
 ; Repo-owned pure-Cesium Godot example scaffold.
+; Version marker: this example is exercised against the repo's Godot 4.x proof lanes,
+; and the launcher notes the tested versions in docs and reports.
 
 config_version=5
 
@@ -7,6 +9,9 @@ config_version=5
 
 config/name="CesiumVanillaExample"
 run/main_scene="res://scenes/Main.tscn"
+
+[editor_plugins]
+enabled=PackedStringArray("res://addons/cesium_godot/plugin.cfg")
 
 [display]
 

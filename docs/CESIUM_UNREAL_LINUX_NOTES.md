@@ -23,12 +23,12 @@ and packaging alignment.
   documentation
 - the public `C:\Users\Public\Unreal\engines\linux\Linux_Unreal_Engine_*.zip`
   archives are useful as discovery and staging evidence
-- the archive route now uses host-side staging before Docker launch, following
-  the Packet-Stoat smart-unpack pattern; that keeps the engine tree unpacked
-  once on the host and lets us copy any discovered Linux support tree into the
-  staged root before the container run
-- the Docker lane now prefers the packaged Packet-Stoat plugin root when it is
-  available and it has the expected `Source/ThirdParty/include` layout
+- the archive route uses host-side staging before Docker launch; that keeps the
+  engine tree unpacked once on the host and lets us copy any discovered Linux
+  support tree into the staged root before the container run
+- the Docker lane uses the repo-owned plugin checkout by default and accepts an
+  explicit `--plugin-root` or `CESIUM_UNREAL_PLUGIN_ROOT` override for a
+  separately prepared local plugin tree
 - the cached `cesium-linux-proof:ubuntu24.04` container has `python3`, `cmake`,
   `ninja`, `git`, and `unzip`, but not the Unreal Linux host toolchain or
   `dotnet`
@@ -54,8 +54,7 @@ Observed result:
 - `BuildPlugin` completes successfully and emits the Linux shipping binary on
   both the 5.7 and 5.8 lanes
 - the latest build log reports `Result: Succeeded` and `ExitCode=0`
-- the lane now uses the Packet-Stoat packaged plugin tree as the preferred
-  plugin root when available, which gives the build the expected
+- the lane uses the repo-owned plugin tree, which gives the build the expected
   `Source/ThirdParty/include` layout
 - the host-side staging root is short enough to avoid the earlier Windows path
   length issues
@@ -100,8 +99,8 @@ Current follow-up:
 
 - launcher Unreal installs are good enough for inspection and report lanes
 - the Docker build now completes successfully on both the 5.7 baseline and 5.8
-  forward-verification lanes when the staged archive and Packet-Stoat packaged
-  plugin root are available
+  forward-verification lanes when the staged archive and repo-owned plugin
+  checkout are available
 - the public Unreal Linux zip archives remain evidence and staging inputs for
   the lane bootstrap, while the packaged plugin root supplies the
   `Source/ThirdParty` layout that makes the build green

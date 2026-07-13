@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import tempfile
 import sys
 from types import SimpleNamespace
 
@@ -88,7 +89,7 @@ def test_default_work_root_prefers_short_windows_tmp_root(monkeypatch) -> None:
     monkeypatch.setattr(bootstrap_local_dev.platform, "system", lambda: "Windows")
     monkeypatch.setattr(bootstrap_local_dev, "_windows_short_root_available", lambda *_args: True)
 
-    assert bootstrap_local_dev._default_work_root() == Path("C:/tmp/cesium_dev")
+    assert bootstrap_local_dev._default_work_root() == Path(tempfile.gettempdir()) / "cesium_dev"
 
 
 def test_default_work_root_falls_back_when_windows_tmp_is_not_writable(monkeypatch) -> None:

@@ -115,7 +115,7 @@ def _installed_version_tags() -> list[str]:
 
 
 def _public_search_roots() -> list[str]:
-    return [str(path) for path in engine_root_discovery.public_engine_search_roots()["godot"]]
+    return [path.as_posix() for path in engine_root_discovery.public_engine_search_roots()["godot"]]
 
 
 def _resolve_install(godot_version: str | None = None, godot_selector: str | None = None) -> tuple[dict[str, object] | None, str | None]:
@@ -133,6 +133,11 @@ def _resolve_install(godot_version: str | None = None, godot_selector: str | Non
                 if str(install.get("version") or "") == selected[0]:
                     return install, "selector"
         return None, "selector"
+    selected = godot_versioning.select_versions(_installed_version_tags(), limit=1)
+    if selected:
+        for install in installs:
+            if str(install.get("version") or "") == selected[0]:
+                return install, "default"
     return (installs[0], "default") if installs else (None, "default")
 
 
@@ -214,6 +219,7 @@ def _build_env(runtime_root: Path) -> dict[str, str]:
     godot_user_dir = runtime_root / "GodotUser"
     for path in (user_profile, localappdata, appdata, temp_dir, godot_user_dir):
         path.mkdir(parents=True, exist_ok=True)
+    (godot_user_dir / "logs").mkdir(parents=True, exist_ok=True)
     env["USERPROFILE"] = str(user_profile)
     env["HOMEDRIVE"] = "C:"
     env["HOMEPATH"] = "\\"
@@ -300,7 +306,7 @@ def run_build(args: argparse.Namespace) -> dict[str, Any]:
             "failure_signals": [],
             "next_steps": [
                 "Install a Godot editor under one of the discovered public search roots, or set FASTDIS_GODOT_ROOTS.",
-                r'For Windows, a good default is C:\Users\Public\Godot\engines\windows or C:\Users\Public\Godot\engines\linux.',
+                "Use the host-specific public Godot root reported by the inventory command for your platform.",
                 "For macOS, a good default is /Applications or ~/Applications.",
                 "Install the matching export template package for the target editor version.",
             ],

@@ -17,6 +17,12 @@ Top-level command:
 - `cesium-prepare-source-route`
 - `cesium-godot-bootstrap`
 - `cesium-host-inventory`
+- `cesium-fork-workpack`
+- `cesium-visual-proof`
+- `cesium-visual-proof-contracts`
+- `cesium-visual-proof-roots`
+- `cesium-visual-proof-audit`
+- `cesium-visual-proof-check`
 - `cesium-godot-doctor`
 - `cesium-example doctor --engine unreal`
 - `cesium-planned-routes`
@@ -31,6 +37,12 @@ cesium-bootstrap
 cesium-prepare-source-route
 cesium-godot-bootstrap editor --godot-version 4.7-stable --native-target windows
 cesium-host-inventory
+cesium-fork-workpack
+cesium-visual-proof
+cesium-visual-proof-contracts
+cesium-visual-proof-roots
+cesium-visual-proof-audit
+cesium-visual-proof-check
 cesium-godot-doctor
 cesium-example doctor --engine unreal
 cesium-planned-routes
@@ -64,6 +76,24 @@ architectures, and core apps are already discoverable on the current host.
 Pass `--godot-selector` to trim the Godot runway view and
 `--max-godot-matches` to keep the filtered list short when there are many
 installed or downloadable targets.
+
+`cesium-fork-workpack` is the standard compatibility work surface. It records
+the exact Cesium workspace commit, the source-route checkout state, and the
+per-engine/per-host checklist that should stay green for each fork.
+
+`cesium-visual-proof` is the screenshot-plan packet. It records the canonical
+camera poses and output locations for the Unreal, Unity, and Godot example
+projects so the eventual capture harness can stay consistent across engines and
+architectures. Windows is the first capture host, with the Windows-native lanes
+listed in `docs/CESIUM_VISUAL_PROOF_PLAN.md`.
+
+`cesium-visual-proof-contracts`, `cesium-visual-proof-roots`, and
+`cesium-visual-proof-audit` are the programmatic gates that validate the checked
+in contracts, the manifest-backed proof roots, and the composed contract/root/
+comparison audit in one pass.
+
+`cesium-visual-proof-check` is the single convenience command that runs the
+combined visual-proof audit when you want one memorable gate to type.
 
 `cesium-cross-platform-fix-notes` turns the current matrix, audit, and planned
 routes packets into a reviewer-facing checklist for the remaining fixes.

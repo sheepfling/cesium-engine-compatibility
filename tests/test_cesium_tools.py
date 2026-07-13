@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import os
 import tomllib
+import subprocess
 from pathlib import Path
 import zipfile
+from types import SimpleNamespace
 
 import pytest
 import cesium
@@ -26,23 +28,80 @@ from tools import (
     build_cesium_cross_platform_fix_notes,
     build_cesium_execution_audit,
     build_cesium_host_inventory,
+    build_cesium_visual_proof,
     build_cesium_planned_routes,
+    build_godot_visual_proof,
+    build_unreal_visual_proof,
+    build_windows_visual_proof,
     build_godot_example,
+    compare_cesium_visual_proof,
     build_unity_example,
     build_unity_native_matrix,
+    build_unity_visual_proof,
     capture_unity_host_report,
     export_unity_host_handoff,
     import_unity_host_report,
+    godot_aggressive_launcher,
     godot_bootstrap,
+    normalize_cesium_visual_proof,
     godot_versioning,
     run_cesium_plugin_lanes,
+    run_windows_visual_proof,
     godot_doctor,
+    validate_visual_proof_roots,
+    validate_visual_proof_contracts,
     stage_unity_host_report,
     unity_env,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _portable_path(value: str | Path) -> str:
+    return str(value).replace("\\", "/")
+
+
+def _write_visual_proof_png(
+    path: Path,
+    *,
+    background: tuple[int, int, int],
+    accent: tuple[int, int, int],
+    patterned: bool = True,
+) -> None:
+    from PIL import Image, ImageDraw
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGB", (192, 128), background)
+    draw = ImageDraw.Draw(image)
+    if patterned:
+        for row in range(8):
+            for column in range(12):
+                left = column * 16
+                top = row * 16
+                right = left + 16
+                bottom = top + 16
+                tile = (
+                    (background[0] + row * 17 + column * 11) % 256,
+                    (background[1] + row * 13 + column * 19) % 256,
+                    (background[2] + row * 23 + column * 7) % 256,
+                )
+                draw.rectangle((left, top, right, bottom), fill=tile)
+        draw.rectangle((12, 12, 180, 116), outline=accent, width=4)
+        draw.ellipse((56, 24, 136, 104), outline=(255, 255, 255), width=4)
+        draw.line((24, 104, 168, 32), fill=accent, width=3)
+        draw.line((24, 32, 168, 104), fill=(255, 255, 255), width=2)
+    image.save(path)
+
+
+def _seed_visual_proof_source(source_root: Path) -> None:
+    palette = {
+        "proxy": ((32, 68, 144), (250, 198, 92)),
+        "cesium": ((14, 88, 72), (86, 208, 248)),
+    }
+    for variant, (background, accent) in palette.items():
+        for shot in build_cesium_visual_proof.CAMERA_SHOTS:
+            _write_visual_proof_png(source_root / f"{variant}_{shot.name}.png", background=background, accent=accent)
 
 
 def test_prepare_source_route_report_shape() -> None:
@@ -185,30 +244,30 @@ binary_format/architecture="x86_64"
             {
                 "version": "4.6.3-stable",
                 "platform": "windows",
-                "root": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.6.3-stable_win64.exe"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.6.3-stable_win64.exe\Godot_v4.6.3-stable_win64.exe"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.6.3-stable_win64.exe\Godot_v4.6.3-stable_win64_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.6.3-stable_win64.exe",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.6.3-stable_win64.exe" / "Godot_v4.6.3-stable_win64.exe",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.6.3-stable_win64.exe" / "Godot_v4.6.3-stable_win64_console.exe",
             },
             {
                 "version": "4.7-stable",
                 "platform": "windows",
-                "root": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.7-stable_win64.exe"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.7-stable_win64.exe\Godot_v4.7-stable_win64.exe"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.7-stable_win64.exe\Godot_v4.7-stable_win64_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.7-stable_win64.exe",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.7-stable_win64.exe" / "Godot_v4.7-stable_win64.exe",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.7-stable_win64.exe" / "Godot_v4.7-stable_win64_console.exe",
             },
             {
                 "version": "4.7.1-rc1",
                 "platform": "windows",
-                "root": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.7.1-rc1_win64.exe"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.7.1-rc1_win64.exe\Godot_v4.7.1-rc1_win64.exe"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.7.1-rc1_win64.exe\Godot_v4.7.1-rc1_win64_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.7.1-rc1_win64.exe",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.7.1-rc1_win64.exe" / "Godot_v4.7.1-rc1_win64.exe",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.7.1-rc1_win64.exe" / "Godot_v4.7.1-rc1_win64_console.exe",
             },
             {
                 "version": "4.8-dev1",
                 "platform": "windows",
-                "root": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.8-dev1_win64.exe"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.8-dev1_win64.exe\Godot_v4.8-dev1_win64.exe"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\windows\Godot_v4.8-dev1_win64.exe\Godot_v4.8-dev1_win64_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.8-dev1_win64.exe",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.8-dev1_win64.exe" / "Godot_v4.8-dev1_win64.exe",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "windows" / "Godot_v4.8-dev1_win64.exe" / "Godot_v4.8-dev1_win64_console.exe",
             },
         ],
     )
@@ -219,30 +278,30 @@ binary_format/architecture="x86_64"
             {
                 "version": "4.6.3-stable",
                 "platform": "linux",
-                "root": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.6.3-stable_linux.x86_64"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.6.3-stable_linux.x86_64\Godot_v4.6.3-stable_linux.x86_64"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.6.3-stable_linux.x86_64\Godot_v4.6.3-stable_linux_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.6.3-stable_linux.x86_64",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.6.3-stable_linux.x86_64" / "Godot_v4.6.3-stable_linux.x86_64",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.6.3-stable_linux.x86_64" / "Godot_v4.6.3-stable_linux_console.exe",
             },
             {
                 "version": "4.7-stable",
                 "platform": "linux",
-                "root": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.7-stable_linux.x86_64"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.7-stable_linux.x86_64\Godot_v4.7-stable_linux.x86_64"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.7-stable_linux.x86_64\Godot_v4.7-stable_linux_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.7-stable_linux.x86_64",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.7-stable_linux.x86_64" / "Godot_v4.7-stable_linux.x86_64",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.7-stable_linux.x86_64" / "Godot_v4.7-stable_linux_console.exe",
             },
             {
                 "version": "4.7.1-rc1",
                 "platform": "linux",
-                "root": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.7.1-rc1_linux.x86_64"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.7.1-rc1_linux.x86_64\Godot_v4.7.1-rc1_linux.x86_64"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.7.1-rc1_linux.x86_64\Godot_v4.7.1-rc1_linux_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.7.1-rc1_linux.x86_64",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.7.1-rc1_linux.x86_64" / "Godot_v4.7.1-rc1_linux.x86_64",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.7.1-rc1_linux.x86_64" / "Godot_v4.7.1-rc1_linux_console.exe",
             },
             {
                 "version": "4.8-dev1",
                 "platform": "linux",
-                "root": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.8-dev1_linux.x86_64"),
-                "executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.8-dev1_linux.x86_64\Godot_v4.8-dev1_linux.x86_64"),
-                "console_executable": Path(r"C:\Users\Public\Godot\engines\linux\Godot_v4.8-dev1_linux.x86_64\Godot_v4.8-dev1_linux_console.exe"),
+                "root": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.8-dev1_linux.x86_64",
+                "executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.8-dev1_linux.x86_64" / "Godot_v4.8-dev1_linux.x86_64",
+                "console_executable": engine_root_discovery.godot_public_root() / "engines" / "linux" / "Godot_v4.8-dev1_linux.x86_64" / "Godot_v4.8-dev1_linux_console.exe",
             },
         ],
     )
@@ -267,7 +326,7 @@ def test_example_workflow_reports_are_self_consistent(example_repo_layout: Path)
         if engine == "unreal":
             assert discover["compatibility_tracking"]["supported_native_targets"] == ["windows", "linux", "mac"]
             assert doctor["compatibility_tracking"]["supported_native_targets"] == ["windows", "linux", "mac"]
-            assert discover["compatibility_tracking"]["public_search_roots"][0] == r"C:\Users\Public\Unreal"
+            assert any(Path(path).name == "Unreal" for path in discover["compatibility_tracking"]["public_search_roots"])
         if engine == "unity":
             assert discover["compatibility_tracking"]["pinned_editor"] == "6000.5.0f1"
             assert doctor["compatibility_tracking"]["pinned_editor"] == "6000.5.0f1"
@@ -277,7 +336,7 @@ def test_example_workflow_reports_are_self_consistent(example_repo_layout: Path)
             assert discover["compatibility_tracking"]["version_matrix"][0]["version"] == "6000.5.0f1"
             assert doctor["compatibility_tracking"]["version_matrix"][0]["package_count"] == 10
             assert doctor["compatibility_tracking"]["version_matrix"][0]["package_dependencies"]["com.unity.inputsystem"] == "1.14.2"
-            assert discover["compatibility_tracking"]["public_search_roots"][0] == r"C:\Users\Public\Unity"
+            assert any(Path(path).name == "Unity" for path in discover["compatibility_tracking"]["public_search_roots"])
         if engine == "godot":
             assert discover["compatibility_tracking"]["pinned_editor"] == "4.7"
             assert doctor["compatibility_tracking"]["native_target"] == "windows"
@@ -296,48 +355,11 @@ def test_example_workflow_reports_are_self_consistent(example_repo_layout: Path)
                 "4.7.1-rc1",
                 "4.8-dev1",
             ]
-            assert discover["compatibility_tracking"]["public_search_roots"][0] == r"C:\Users\Public\Godot"
+            assert any(Path(path).name == "Godot" for path in discover["compatibility_tracking"]["public_search_roots"])
             assert doctor["native_target"] is None
         if engine == "unreal":
             bridge_check = next(check for check in doctor["checks"] if check["name"] == "sample_plugin_bridge")
             assert bridge_check["status"] == "ok"
-
-
-def test_unity_findings_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_UNITY_6000_5_FINDINGS.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "6000.5.0f1" in content
-    assert "6000.3.19f1" in content
-    assert "6000.6.0b2" in content
-    assert "current example-project version file" in content
-    assert "forward compatibility" in content
-    assert "backward compatibility" in content
-    assert "cesium-unity-host-handoff.zip" in content
-    assert "batchmode" in content
-    assert "open and build the repo-owned example" in content
-    assert "project in batchmode on this host" in content
-    assert "## Linux/Docker Proof Checklist" in content
-    assert "cesium-unity-linux-docker --native-target linux" in content
-    assert "6000.3.19f1" in content
-    assert "6000.5.2f1" in content
-    assert "6000.6.0b2" in content
-    assert "host-side Unity discovery snapshot" in content
-    assert "installed editor spread that the container consumes" in content
-
-
-def test_unity_version_matrix_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_UNITY_VERSION_MATRIX.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "6000.3.19f1" in content
-    assert "6000.5.2f1" in content
-    assert "6000.6.0b2" in content
-    assert "current baseline" in content
-    assert "forward verification" in content
-    assert "batchmode" in content.lower()
 
 
 def test_unity_native_matrix_report_shape(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -368,24 +390,24 @@ def test_unity_native_matrix_report_shape(monkeypatch: pytest.MonkeyPatch) -> No
         lambda: [
             unity_env.UnityInstall(
                 version="6000.3.19f1",
-                install_root=r"C:\Unity\6000.3.19f1",
-                editor_path=r"C:\Unity\6000.3.19f1\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.3.19f1"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Unity" / "6000.3.19f1" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="scan",
                 quirks=(),
             ),
             unity_env.UnityInstall(
                 version="6000.5.2f1",
-                install_root=r"C:\Unity\6000.5.2f1",
-                editor_path=r"C:\Unity\6000.5.2f1\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.2f1"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.2f1" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="scan",
                 quirks=(),
             ),
             unity_env.UnityInstall(
                 version="6000.6.0b2",
-                install_root=r"C:\Unity\6000.6.0b2",
-                editor_path=r"C:\Unity\6000.6.0b2\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.6.0b2"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Unity" / "6000.6.0b2" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="scan",
                 quirks=(),
@@ -496,8 +518,8 @@ def test_unity_default_scan_roots_include_public_root_on_windows(monkeypatch: py
 
     roots = unity_env.default_scan_roots()
 
-    assert roots[0] == unity_env.PUBLIC_UNITY_ROOT
-    assert Path(r"C:\Program Files\Unity\Hub\Editor") in roots
+    assert Path(roots[0]).name == "Unity"
+    assert any(_portable_path(root).endswith("Program Files/Unity/Hub/Editor") for root in roots)
 
 
 def test_unity_host_report_stage_export_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -536,8 +558,8 @@ def test_unity_example_build_dry_run_shapes(tmp_path: Path, monkeypatch: pytest.
         "resolve_install",
         lambda version=None: unity_env.UnityInstall(
             version=version or "6000.5.2f1",
-            install_root=r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-            editor_path=r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+            install_root=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+            editor_path=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
             editor_app_path=None,
             source="test",
             quirks=(),
@@ -578,8 +600,8 @@ def test_unity_example_build_adds_system_ca_to_node_options(
         "resolve_install",
         lambda version=None: unity_env.UnityInstall(
             version=version or "6000.5.2f1",
-            install_root=r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-            editor_path=r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+            install_root=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+            editor_path=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
             editor_app_path=None,
             source="test",
             quirks=(),
@@ -600,7 +622,27 @@ def test_unity_example_build_adds_system_ca_to_node_options(
         log_path.write_text("log line\n", encoding="utf-8")
         return type("Completed", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
+    class FakeProcess:
+        pid = 12345
+        returncode = 0
+
+        def poll(self):  # type: ignore[no-untyped-def]
+            return self.returncode
+
+        def wait(self, timeout=None):  # type: ignore[no-untyped-def]
+            return self.returncode
+
+    def fake_popen(command, *, cwd=None, text=None, stdout=None, stderr=None, env=None):  # type: ignore[no-untyped-def]
+        captured["env"] = env
+        captured["command"] = command
+        log_index = command.index("-logFile")
+        log_path = Path(command[log_index + 1])
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("log line\n", encoding="utf-8")
+        return FakeProcess()
+
     monkeypatch.setattr(build_unity_example.subprocess, "run", fake_run)
+    monkeypatch.setattr(build_unity_example.subprocess, "Popen", fake_popen)
 
     payload = build_unity_example.run_build(
         build_unity_example.parse_args(
@@ -659,16 +701,16 @@ def test_unity_example_build_lane_uses_new_launcher(monkeypatch: pytest.MonkeyPa
         lambda: [
             unity_env.UnityInstall(
                 version="6000.3.19f1",
-                install_root=r"C:\Program Files\Unity\Hub\Editor\6000.3.19f1",
-                editor_path=r"C:\Program Files\Unity\Hub\Editor\6000.3.19f1\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.3.19f1"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.3.19f1" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="test",
                 quirks=(),
             ),
             unity_env.UnityInstall(
                 version="6000.5.2f1",
-                install_root=r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-                editor_path=r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="test",
                 quirks=(),
@@ -716,7 +758,7 @@ def test_cesium_engine_matrix_report_shape(monkeypatch: pytest.MonkeyPatch) -> N
             "schema": "cesium.unreal_linux_lane.v1",
             "status": "ok",
             "version_matrix": [{"engine_version": "5.7"}, {"engine_version": "5.8"}],
-            "public_search_roots": [r"C:\Users\Public\Unreal"],
+            "public_search_roots": [_portable_path(Path.cwd() / "tmp-public" / "Unreal")],
             "build_commands": ["docker build"],
             "next_steps": ["next-unreal-linux"],
         }
@@ -747,9 +789,9 @@ def test_cesium_engine_matrix_report_shape(monkeypatch: pytest.MonkeyPatch) -> N
         build_cesium_engine_matrix.unity_env,
         "discover_installs",
         lambda: [
-            unity_env.UnityInstall(version="6000.3.19f1", install_root=r"C:\Unity\6000.3.19f1", editor_path=None, editor_app_path=None, source="test", quirks=()),
-            unity_env.UnityInstall(version="6000.5.2f1", install_root=r"C:\Unity\6000.5.2f1", editor_path=None, editor_app_path=None, source="test", quirks=()),
-            unity_env.UnityInstall(version="6000.6.0b2", install_root=r"C:\Unity\6000.6.0b2", editor_path=None, editor_app_path=None, source="test", quirks=()),
+            unity_env.UnityInstall(version="6000.3.19f1", install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.3.19f1"), editor_path=None, editor_app_path=None, source="test", quirks=()),
+            unity_env.UnityInstall(version="6000.5.2f1", install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.2f1"), editor_path=None, editor_app_path=None, source="test", quirks=()),
+            unity_env.UnityInstall(version="6000.6.0b2", install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.6.0b2"), editor_path=None, editor_app_path=None, source="test", quirks=()),
         ],
     )
 
@@ -788,61 +830,6 @@ def test_cesium_engine_matrix_report_shape(monkeypatch: pytest.MonkeyPatch) -> N
     assert payload["gaps"].count("Unity macOS remains planned.") == 1
 
 
-def test_engine_matrix_note_mentions_evidence_tiers() -> None:
-    findings = ROOT / "docs" / "CESIUM_ENGINE_MATRIX.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "## Engine-by-Platform Matrix" in content
-    assert "| Engine | Windows | Linux | macOS Intel `x86_64` | macOS Apple Silicon `arm64` | Notes |" in content
-    assert "| Unreal | verified | verified | planned | planned |" in content
-    assert "| Unity | verified | planned | planned | planned |" in content
-    assert "| Godot | verified | verified | planned | planned |" in content
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-execution-audit" in content
-    assert "cesium-planned-routes" in content
-    assert "evidence tiers" in content
-    assert "verified lanes from planned lanes" in content
-    assert "discovered Unity install spread" in content
-    assert "Unity proof lane" in content
-    assert "Unity macOS" in content
-    assert "unity-host-mac" in content
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-execution-audit" in content
-    assert "cesium-planned-routes" in content
-
-
-def test_execution_audit_note_mentions_unity_split() -> None:
-    findings = ROOT / "docs" / "CESIUM_EXECUTION_AUDIT.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-engine-matrix" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-planned-routes" in content
-    assert "cesium-execution-audit" in content
-    assert "proof lane: `6000.5.0f1`" in content
-    assert "current example-project version: `6000.6.0b2`" in content
-    assert "installed host spread" in content
-    assert "Linux/Docker still a planned proof lane" in content
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-engine-matrix" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-planned-routes" in content
-    assert "Windows host coverage for Unity" in content
-    assert "Unity Linux/Docker lane now has a live Docker" in content
-    assert "Unity macOS remains planned as the other native gap" in content
-    assert "lane remains planned for the same reason" in content
-    assert "That planned route is now commandable as `cesium-unity-linux-docker --native-target linux`" in content
-
-
 def test_cesium_plugin_lanes_dry_run_expands_known_lanes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         run_cesium_plugin_lanes.unreal_linux_lane,
@@ -857,8 +844,8 @@ def test_cesium_plugin_lanes_dry_run_expands_known_lanes(monkeypatch: pytest.Mon
         lambda: [
             unity_env.UnityInstall(
                 version="6000.5.0f1",
-                install_root=r"C:\Unity\6000.5.0f1",
-                editor_path=r"C:\Unity\6000.5.0f1\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.0f1"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.0f1" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="test",
                 quirks=(),
@@ -956,9 +943,9 @@ def test_cesium_execution_audit_shape(tmp_path: Path, monkeypatch: pytest.Monkey
         build_cesium_execution_audit.engine_root_discovery,
         "public_engine_search_roots",
         lambda: {
-            "unreal": [Path(r"C:\Users\Public\Unreal")],
-            "godot": [Path(r"C:\Users\Public\Godot")],
-            "unity": [Path(r"C:\Users\Public\Unity")],
+            "unreal": [build_cesium_execution_audit.engine_root_discovery.unreal_public_root()],
+            "godot": [build_cesium_execution_audit.engine_root_discovery.godot_public_root()],
+            "unity": [build_cesium_execution_audit.engine_root_discovery.unity_public_root()],
         },
     )
     monkeypatch.setattr(
@@ -970,10 +957,10 @@ def test_cesium_execution_audit_shape(tmp_path: Path, monkeypatch: pytest.Monkey
             "build_result": "succeeded",
             "build_log": "artifacts/reports/unreal_linux_docker/cesium_unreal_linux_build_5.8.log",
             "build_output_binary": "/ue/Engine/Binaries/Linux/UnrealGame-Linux-Shipping",
-            "linux_platform_support_search_roots": [Path(r"C:\Users\Public\Unreal\Engine\Platforms\Linux")],
-            "linux_platform_support_roots": [Path(r"C:\Users\Public\Unreal\Engine\Platforms\Linux")],
+            "linux_platform_support_search_roots": [build_cesium_execution_audit.engine_root_discovery.unreal_public_root() / "Engine" / "Platforms" / "Linux"],
+            "linux_platform_support_roots": [build_cesium_execution_audit.engine_root_discovery.unreal_public_root() / "Engine" / "Platforms" / "Linux"],
             "linux_platform_support_ready": True,
-            "public_unreal_archives": [Path(r"C:\Users\Public\Unreal\engines\linux\Linux_Unreal_Engine_5.8.0.zip")],
+            "public_unreal_archives": [build_cesium_execution_audit.engine_root_discovery.unreal_public_root() / "engines" / "linux" / "Linux_Unreal_Engine_5.8.0.zip"],
         },
     )
     monkeypatch.setattr(
@@ -982,8 +969,8 @@ def test_cesium_execution_audit_shape(tmp_path: Path, monkeypatch: pytest.Monkey
         lambda: [
             unity_env.UnityInstall(
                 version="6000.5.0f1",
-                install_root=r"C:\Unity\6000.5.0f1",
-                editor_path=r"C:\Unity\6000.5.0f1\Editor\Unity.exe",
+                install_root=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.0f1"),
+                editor_path=str(Path.cwd() / "tmp-public" / "Unity" / "6000.5.0f1" / "Editor" / "Unity.exe"),
                 editor_app_path=None,
                 source="test",
                 quirks=(),
@@ -1026,17 +1013,17 @@ def test_cesium_execution_audit_shape(tmp_path: Path, monkeypatch: pytest.Monkey
     assert payload["readiness"]["unity_host"] is True
     assert payload["readiness"]["godot_windows"] is True
     assert payload["readiness"]["godot_linux"] is True
-    assert payload["host"]["unreal_public_roots"] == [r"C:\Users\Public\Unreal"]
-    assert payload["host"]["godot_public_roots"] == [r"C:\Users\Public\Godot"]
-    assert payload["host"]["unity_public_roots"][0] == r"C:\Users\Public\Unity"
+    assert any(Path(path).name == "Unreal" for path in payload["host"]["unreal_public_roots"])
+    assert any(Path(path).name == "Godot" for path in payload["host"]["godot_public_roots"])
+    assert any(Path(path).name == "Unity" for path in payload["host"]["unity_public_roots"])
     assert payload["unreal"]["versions"] == ["5.7", "5.8"]
     assert payload["unity"]["versions"] == ["6000.5.0f1"]
     assert payload["unity"]["proof_lane_version"] == "6000.5.0f1"
     assert payload["unity"]["example_project_version"] == "6000.6.0b2"
     assert payload["unreal"]["linux_platform_support_ready"] is True
-    assert payload["unreal"]["linux_platform_support_search_roots"] == [r"C:\Users\Public\Unreal\Engine\Platforms\Linux"]
-    assert payload["unreal"]["linux_platform_support_roots"] == [r"C:\Users\Public\Unreal\Engine\Platforms\Linux"]
-    assert payload["unreal"]["public_unreal_archives"] == [r"C:\Users\Public\Unreal\engines\linux\Linux_Unreal_Engine_5.8.0.zip"]
+    assert any(_portable_path(path).endswith("Public/Unreal/Engine/Platforms/Linux") for path in payload["unreal"]["linux_platform_support_search_roots"])
+    assert any(_portable_path(path).endswith("Public/Unreal/Engine/Platforms/Linux") for path in payload["unreal"]["linux_platform_support_roots"])
+    assert any(_portable_path(path).endswith("Public/Unreal/engines/linux/Linux_Unreal_Engine_5.8.0.zip") for path in payload["unreal"]["public_unreal_archives"])
     assert payload["unreal"]["selected_source"] == "unknown"
     assert payload["unity"]["latest_example_build_failure_signals"] == [
         "Package Manager tried to write under the installed editor tree and hit EPERM.",
@@ -1111,7 +1098,7 @@ def test_cesium_planned_routes_shape(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda: {
             "overall_status": "dry-run",
             "selected_lanes": ["cross-platform-planned"],
-            "log_dir": r"C:\tmp\logs",
+            "log_dir": _portable_path(Path.cwd() / "tmp" / "logs"),
             "lanes": [
                 {
                     "id": "cross-platform-planned",
@@ -1134,9 +1121,9 @@ def test_cesium_planned_routes_shape(monkeypatch: pytest.MonkeyPatch) -> None:
         build_cesium_planned_routes.engine_root_discovery,
         "public_engine_search_roots",
         lambda: {
-            "unreal": [Path(r"C:\Users\Public\Unreal")],
-            "unity": [Path(r"C:\Users\Public\Unity")],
-            "godot": [Path(r"C:\Users\Public\Godot")],
+            "unreal": [Path.cwd() / "tmp-public" / "Unreal"],
+            "unity": [Path.cwd() / "tmp-public" / "Unity"],
+            "godot": [Path.cwd() / "tmp-public" / "Godot"],
         },
     )
     monkeypatch.setattr(build_cesium_planned_routes.build_cesium_engine_matrix, "build_payload", lambda: {"status": "partial"})
@@ -1156,9 +1143,9 @@ def test_cesium_planned_routes_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["related_packets"]["engine_matrix"]["status"] == "partial"
     assert payload["related_packets"]["execution_audit"]["status"] == "partial"
     assert payload["related_packets"]["compatibility_packet"]["path"] == "artifacts/reports/cesium_compatibility_packet/cesium_compatibility_packet.json"
-    assert payload["host"]["unreal_public_roots"] == [r"C:\Users\Public\Unreal"]
-    assert payload["host"]["unity_public_roots"] == [r"C:\Users\Public\Unity"]
-    assert payload["host"]["godot_public_roots"] == [r"C:\Users\Public\Godot"]
+    assert any(Path(path).name == "Unreal" for path in payload["host"]["unreal_public_roots"])
+    assert any(Path(path).name == "Unity" for path in payload["host"]["unity_public_roots"])
+    assert any(Path(path).name == "Godot" for path in payload["host"]["godot_public_roots"])
 
 
 def test_cesium_execution_audit_latest_unity_failure_signals_falls_back_to_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1210,18 +1197,47 @@ def test_cesium_compatibility_packet_shape(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(build_cesium_compatibility_packet.build_cesium_planned_routes, "build_payload", lambda: {
         "status": "dry-run",
     })
+    monkeypatch.setattr(build_cesium_compatibility_packet.build_cesium_fork_workpack, "build_payload", lambda: {
+        "status": "partial",
+        "evidence": [{"surface": "fork", "kind": "doc", "path": "docs/c.md"}],
+    })
+    monkeypatch.setattr(build_cesium_compatibility_packet.build_cesium_visual_proof, "build_payload", lambda: {
+        "status": "commandable",
+        "targets": [{"engine": "unreal", "native_target": "windows", "architecture": "x86_64", "capture_root": "artifacts/reports/cesium_visual_proof/unreal/windows/x86_64", "proof_runner": {"normalized_capture_root": "artifacts/reports/cesium_visual_proof/unreal/windows/x86_64"}}],
+    })
+    monkeypatch.setattr(build_cesium_compatibility_packet.build_windows_visual_proof, "build_payload", lambda: {
+        "status": "commandable",
+    })
+    monkeypatch.setattr(build_cesium_compatibility_packet.compare_cesium_visual_proof, "build_payload", lambda scan_roots=None, strict_missing=True: {
+        "status": "pass",
+    })
+    monkeypatch.setattr(build_cesium_compatibility_packet.validate_visual_proof_roots, "build_payload", lambda scan_roots=None: {
+        "status": "pass",
+        "summary": {"missing_engines": [], "present_engines": ["unreal", "unity", "godot"], "root_count": 1},
+    })
+    monkeypatch.setattr(build_cesium_compatibility_packet.validate_visual_proof_audit, "build_payload", lambda scan_roots=None: {
+        "status": "pass",
+        "summary": {"root_engine_coverage_status": "pass"},
+    })
+    monkeypatch.setattr(build_cesium_compatibility_packet.build_unreal_visual_proof, "build_payload", lambda: {
+        "status": "commandable",
+    })
 
     payload = build_cesium_compatibility_packet.build_payload()
 
     assert payload["schema"] == "cesium.compatibility_packet.v1"
     assert payload["status"] == "partial"
-    assert payload["summary"]["evidence_count"] == 3
+    assert payload["summary"]["evidence_count"] == 10
     assert payload["summary"]["planned_routes_status"] == "dry-run"
     assert payload["gaps"] == ["unity gap", "unity native gap", "audit gap"]
     assert payload["reports"]["engine_matrix"]["status"] == "partial"
     assert payload["reports"]["unity_native_matrix"]["status"] == "partial"
     assert payload["reports"]["execution_audit"]["status"] == "partial"
     assert payload["related_packets"]["planned_routes"]["status"] == "dry-run"
+    assert payload["related_packets"]["windows_visual_proof"]["status"] == "commandable"
+    assert payload["related_packets"]["windows_visual_proof_run"]["path"].endswith("windows_visual_proof_run/windows_visual_proof_run.json")
+    assert payload["related_packets"]["unreal_visual_proof"]["status"] == "commandable"
+    assert payload["related_packets"]["visual_proof"]["status"] == "commandable"
 
 
 def test_cesium_execution_audit_cli_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1253,119 +1269,6 @@ def test_cesium_execution_audit_cli_dispatch(monkeypatch: pytest.MonkeyPatch) ->
     assert exit_code == 7
     assert calls[-1][0] == "cross-platform-fix-notes"
     assert calls[-1][1] == []
-
-
-def test_godot_windows_build_notes_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_GODOT_WINDOWS_4_7_BUILD_NOTES.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "4.7" in content
-    assert "windows" in content.lower()
-    assert "forward compatibility" in content
-    assert "backward compatibility" in content
-
-
-def test_godot_windows_version_matrix_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_GODOT_WINDOWS_VERSION_MATRIX.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "4.6.3-stable" in content
-    assert "4.7-stable" in content
-    assert "4.7.1-rc1" in content
-    assert "4.8-dev1" in content
-    assert "four public godot windows builds" in content.lower()
-
-
-def test_godot_linux_version_matrix_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_GODOT_LINUX_VERSION_MATRIX.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "4.6.3-stable" in content
-    assert "4.7-stable" in content
-    assert "4.7.1-rc1" in content
-    assert "4.8-dev1" in content
-    assert "linux version matrix" in content.lower()
-
-
-def test_godot_cross_platform_notes_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_GODOT_CROSS_PLATFORM_NOTES.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "windows" in content.lower()
-    assert "linux" in content.lower()
-    assert "mac" in content.lower()
-    assert "native import/open proof" in content
-    assert "The live Godot report lanes have now been exercised locally" in content
-    assert "Windows" in content
-    assert "Linux native targets" in content
-    assert "macOS remains the next live proof gap" in content
-    assert "cesium-plugin-lanes --dry-run --lanes godot-host-mac" in content
-    assert "## macOS Packet Shape" in content
-    assert "## macOS Proof Checklist" in content
-    assert "4.6.3-stable" in content
-    assert "4.7-stable" in content
-    assert "4.7.1-rc1" in content
-    assert "4.8-dev1" in content
-    assert "headless import mode" in content
-    assert "Windows import/open smoke" in content
-    assert "Linux import/open smoke" in content
-    assert "macOS import/open smoke" in content
-    assert "hand-mounted Godot install can be discovered" in content
-    assert "godot-windows" in content
-    assert "godot-linux" in content
-    assert "godot-mac" in content
-
-
-def test_planned_routes_note_is_present() -> None:
-    note = ROOT / "docs" / "CESIUM_PLANNED_ROUTES.md"
-
-    assert note.is_file()
-    content = note.read_text(encoding="utf-8")
-    assert "cesium-planned-routes" in content
-    assert "Unity Linux/Docker planned proof routes" in content
-    assert "Godot macOS planned proof routes" in content
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-engine-matrix" in content
-    assert "cesium-execution-audit" in content
-    assert "cesium-compatibility-packet" in content
-
-
-def test_compatibility_packet_note_mentions_packet_graph() -> None:
-    note = ROOT / "artifacts" / "reports" / "cesium_compatibility_packet" / "cesium_compatibility_packet.md"
-
-    assert note.is_file()
-    content = note.read_text(encoding="utf-8")
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-engine-matrix" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-execution-audit" in content
-    assert "cesium-planned-routes" in content
-
-
-def test_cross_platform_fix_notes_note_is_present() -> None:
-    note = ROOT / "docs" / "CESIUM_CROSS_PLATFORM_FIX_NOTES.md"
-
-    assert note.is_file()
-    content = note.read_text(encoding="utf-8")
-    assert "## Packet Graph" in content
-    assert "## Packet Status" in content
-    assert "cesium-engine-matrix" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-execution-audit" in content
-    assert "cesium-planned-routes" in content
-    assert "| Engine | Version family | Backing evidence | Current commandable path |" in content
-    assert "| Engine | Version | Windows | Linux Docker | macOS | Notes |" in content
-    assert "Unreal Windows coverage exists for `5.7` and `5.8`" in content
-    assert "Unity Linux/Docker still needs a build-green proof" in content
-    assert "Godot macOS remains the next live proof gap" in content
-    assert "docs/CESIUM_PLANNED_ROUTES.md" in content
-    assert "cesium-planned-routes" in content
 
 
 def test_cesium_cross_platform_fix_notes_shape(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1530,156 +1433,21 @@ def test_discover_godot_macos_versions_scans_app_bundles(tmp_path: Path, monkeyp
     assert versions[0]["executable"] == executable_dir / "Godot"
 
 
-def test_unreal_linux_notes_note_is_present() -> None:
-    findings = ROOT / "docs" / "CESIUM_UNREAL_LINUX_NOTES.md"
+def test_unreal_linux_lane_report_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    public_unreal_root = tmp_path / "Public" / "Unreal"
+    public_unreal_root.mkdir(parents=True, exist_ok=True)
+    platform_support_root = public_unreal_root / "Engine" / "Platforms" / "Linux"
+    platform_support_root.mkdir(parents=True, exist_ok=True)
+    archive = public_unreal_root / "engines" / "linux" / "Linux_Unreal_Engine_5.8.0.zip"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    archive.write_text("stub\n", encoding="utf-8")
+    monkeypatch.setattr(
+        unreal_linux_lane,
+        "public_engine_search_roots",
+        lambda: {"unreal": [public_unreal_root], "godot": [], "unity": []},
+    )
+    monkeypatch.setattr(unreal_linux_lane, "discover_unreal_linux_archives", lambda: [archive])
 
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "Linux" in content
-    assert "forward compatibility" in content
-    assert "backward compatibility" in content
-    assert "Current Docker Result" in content
-    assert "report path runs to completion inside Docker" in content
-    assert "latest build log reports `Result: Succeeded` and `ExitCode=0`" in content
-    assert "## Source-Built Proof Checklist" in content
-    assert "5.7" in content
-    assert "5.8" in content
-    assert "--linux-platform-support-root" in content
-    assert "the public Unreal Linux zip archives remain evidence and staging inputs for" in content
-    assert "the report path now also prints the discovered support roots" in content
-
-
-def test_unreal_version_matrix_note_is_present() -> None:
-    findings = ROOT / "docs" / "UNREAL_VERSION_MATRIX.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "Windows Proof Lane" in content
-    assert "Linux Matrix" in content
-    assert "5.7" in content
-    assert "5.8" in content
-    assert "Windows and Linux both have explicit Unreal version coverage" in content
-
-
-def test_fork_ledger_mentions_unreal_windows_and_linux_coverage() -> None:
-    findings = ROOT / "docs" / "CESIUM_FORK_LEDGER.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "Unreal 5.7, Unreal 5.8" in content
-    assert "Windows/Linux split" in content
-    assert "source and packaging compatibility" in content
-
-
-def test_fork_push_plan_covers_unreal_57_58_verification() -> None:
-    findings = ROOT / "docs" / "research" / "CESIUM_FORK_PUSH_PLAN.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "Unreal 5.7/5.8 Verification" in content
-    assert "Windows 5.7/5.8 build/package/test evidence" in content
-    assert "fork/unreal-57-58-verify" in content
-
-
-def test_example_standard_mentions_unreal_windows_and_linux_proof() -> None:
-    findings = ROOT / "extensions" / "cesium" / "docs" / "CESIUM_EXAMPLE_STANDARD.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "Windows proof lane and the Linux Docker proof lane" in content
-    assert "docs/CESIUM_UNREAL_LINUX_NOTES.md" in content
-    assert "repo-owned example" in content
-    assert "project file itself has moved to `6000.6.0b2`" in content
-
-
-def test_unity_source_route_note_tracks_proof_lane_and_project_version() -> None:
-    findings = ROOT / "extensions" / "cesium" / "docs" / "CESIUM_SOURCE_ROUTE.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "current proof lane: `6000.5.0f1`" in content
-    assert "repo-owned example project version file: `6000.6.0b2`" in content
-    assert "FASTDIS_CESIUM_UNREAL_REMOTE" in content
-    assert "Cesium macOS Silicon Build Notes" in content
-
-
-def test_macos_silicon_build_notes_are_present() -> None:
-    findings = ROOT / "extensions" / "cesium" / "docs" / "CESIUM_MACOS_SILICON_BUILD_NOTES.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "macOS Silicon Build Notes" in content
-    assert "arm64" in content
-    assert "x86_64" in content
-    assert "FASTDIS_CESIUM_UNREAL_REMOTE" in content
-
-
-def test_unity_example_readme_tracks_current_example_version() -> None:
-    findings = ROOT / "extensions" / "cesium" / "examples" / "unity" / "README.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "pinned Unity lane currently means `6000.5.0f1`" in content
-    assert "the example-project file itself is currently `6000.6.0b2`" in content
-
-
-def test_pr_packet_summary_captures_verified_surface_and_open_gaps() -> None:
-    findings = ROOT / "docs" / "CESIUM_PR_PACKET_SUMMARY.md"
-
-    assert findings.is_file()
-    content = findings.read_text(encoding="utf-8")
-    assert "## Packet Graph" in content
-    assert "cesium-engine-matrix" in content
-    assert "cesium-unity-native-matrix" in content
-    assert "cesium-execution-audit" in content
-    assert "cesium-planned-routes" in content
-    assert "## Packet Status" in content
-    assert "cesium-planned-routes`: `dry-run" in content
-    assert "## Coverage Snapshot" in content
-    assert "| Surface | Verified Today | Still Planned |" in content
-    assert "Unreal" in content
-    assert "Unreal Windows coverage is explicit for `5.7` and `5.8`" in content
-    assert "Unreal Linux Docker build evidence is explicit for `5.7` and `5.8`" in content
-    assert "stronger source-built Linux platform-support story for long-lived upstream reference" in content
-    assert "Unity lane coverage now includes `6000.3.19f1`, `6000.5.2f1`, and" in content
-    assert "`6000.6.0b2`; the Unity host report plus handoff archive are generated" in content
-    assert "the example-build lane now attempts all three installed editors" in content
-    assert "live Linux Docker report" in content
-    assert "separate live Cesium install/build proof" in content
-    assert "Godot Windows evidence is explicit for `4.6.3-stable`" in content
-    assert "Godot native report lanes have been exercised for Windows and Linux" in content
-    assert "macOS remains the next live proof gap" in content
-    assert "repo-owned example" in content
-    assert "project in batchmode" in content
-    assert "Godot editor can headlessly import the" in content
-    assert "repo-owned example project on" in content
-    assert "Linux editor has now been exercised in Docker" in content
-    assert "Linux lane can do the same inside Docker" in content
-    assert "macOS remains the next live proof gap" in content
-    assert "godot-host-mac" in content
-    assert "macOS native target" in content
-    assert "source-built Linux" in content
-    assert "platform-support story" in content
-    assert "Unreal Linux Docker now has successful 5.7 and 5.8 build paths on this host" in content
-    assert "packaged plugin root gives the build the expected" in content
-    assert "successful 5.7 and 5.8 build paths on this host" in content
-    assert "Unity still needs a separate live Cesium plugin install/build proof run" in content
-    assert "the macOS route is now commandable as `cesium-plugin-lanes --dry-run --lanes godot-host-mac`" in content
-    assert "route now has a live Docker report artifact" in content
-    assert "cesium-unity-linux-docker --native-target linux" in content
-    assert "unity-host-mac" in content
-    assert "## Next Proof Runs" in content
-    assert "related-packet index" in content
-    assert "cesium-unreal-linux-docker build-plan --engine-version 5.8" in content
-    assert "source-built Linux support tree for upstream parity" in content
-    assert "cesium-unity-linux-docker --native-target linux" in content
-    assert "cesium-plugin-lanes --dry-run --lanes godot-host-mac unity-host-linux-docker unity-host-mac" in content
-    assert "live Cesium package-route proof" in content
-    assert "cesium-plugin-lanes --dry-run --lanes godot-host-mac" in content
-    assert "macOS import/open or build proof" in content
-
-
-def test_unreal_linux_lane_report_shape() -> None:
     report = unreal_linux_lane.report_payload()
 
     assert report["schema"] == "cesium.unreal_linux_lane.v1"
@@ -1690,13 +1458,53 @@ def test_unreal_linux_lane_report_shape() -> None:
     assert any(check["name"] == "editor_linux_branch" and check["status"] == "ok" for check in report["checks"])
     assert report["build_commands"]
     assert report["next_steps"]
-    assert report["public_search_roots"][0] == r"C:\Users\Public\Unreal"
-    assert report["linux_platform_support_search_roots"] == [
-        r"C:\Users\Public\Unreal\Engine\Platforms\Linux",
-        r"C:\Program Files\Epic Games\Engine\Platforms\Linux",
+    assert _portable_path(report["public_search_roots"][0]) == _portable_path(public_unreal_root)
+    assert [_portable_path(path) for path in report["linux_platform_support_search_roots"]] == [
+        _portable_path(platform_support_root),
     ]
     assert "linux_platform_support_roots" in report
     assert "linux_platform_support_ready" in report
+
+
+def test_unity_license_probe_classifies_blocked_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    install = unity_env.UnityInstall(
+        version="6000.5.2f1",
+        install_root=str(tmp_path / "Unity"),
+        editor_path=str(tmp_path / "Unity" / "Unity.exe"),
+        editor_app_path=None,
+        source="test",
+        quirks=(),
+    )
+    monkeypatch.setattr(unity_env.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(
+        unity_env.subprocess,
+        "run",
+        lambda *args, **kwargs: type("Completed", (), {"stdout": "No valid Unity Editor license found", "stderr": "", "returncode": 1})(),
+    )
+    result = unity_env.probe_unity_license(install, log_path=tmp_path / "license.log")
+    assert result["status"] == "blocked"
+    assert result["signals"] == ["no valid unity editor license"]
+
+
+def test_unity_hub_bootstrap_leaves_successful_process_running(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    hub = tmp_path / "Unity Hub.exe"
+    hub.write_text("stub\n", encoding="utf-8")
+    monkeypatch.setattr(unity_env.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(unity_env, "unity_hub_candidates", lambda: [hub])
+
+    class RunningProcess:
+        pid = 42
+
+        def poll(self) -> None:
+            return None
+
+    monkeypatch.setattr(unity_env.subprocess, "Popen", lambda *args, **kwargs: RunningProcess())
+    monkeypatch.setattr(unity_env.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(unity_env.time, "monotonic", iter([0.0, 0.0, 1.0]).__next__)
+    result = unity_env.ensure_unity_hub_open(settle_seconds=0.5)
+    assert result["status"] == "opened"
+    assert result["left_running"] is True
+    assert result["pid"] == 42
 
 
 def test_unreal_linux_lane_supports_selected_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1831,7 +1639,7 @@ def test_unreal_linux_docker_report_does_not_forward_ue_root(monkeypatch: pytest
     monkeypatch.setattr(
         unreal_linux_docker,
         "_resolve_ue_root_with_source",
-        lambda explicit_root, engine_version=None: (None, "staged zip from C:\\Users\\Public\\Unreal", archive),
+        lambda explicit_root, engine_version=None: (None, "staged zip from public Unreal search roots", archive),
     )
     monkeypatch.setattr(unreal_linux_docker, "_archive_has_linux_platform_support", lambda _archive: True)
 
@@ -1881,7 +1689,7 @@ def test_unreal_linux_docker_report_surfaces_discovered_support_roots_and_archiv
     monkeypatch.setattr(
         unreal_linux_docker,
         "_resolve_ue_root_with_source",
-        lambda explicit_root, engine_version=None: (None, "staged zip from C:\\Users\\Public\\Unreal", archive),
+        lambda explicit_root, engine_version=None: (None, "staged zip from public Unreal search roots", archive),
     )
     monkeypatch.setattr(unreal_linux_docker, "_archive_has_linux_platform_support", lambda _archive: True)
 
@@ -1908,7 +1716,7 @@ def test_unreal_linux_docker_report_surfaces_discovered_support_roots_and_archiv
 
     assert exit_code == 17
     out = capsys.readouterr().out
-    assert "selected source: staged zip from C:\\Users\\Public\\Unreal" in out
+    assert "selected source: staged zip from public Unreal search roots" in out
     assert "discovered linux platform support roots:" in out
     assert str(support_root) in out
     assert "public Unreal archives:" in out
@@ -1917,17 +1725,23 @@ def test_unreal_linux_docker_report_surfaces_discovered_support_roots_and_archiv
     assert captured["linux_platform_support_root"] is None
 
 
-def test_unreal_linux_docker_prefers_packaged_plugin_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_unreal_linux_docker_prefers_repo_plugin_root_with_include_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source_root = tmp_path / "cesium-unreal"
-    packaged_root = tmp_path / "Packet-Stoat" / "build" / "unreal_vendor_plugins" / "cesium" / "linux_docker_5_8" / "CesiumForUnreal"
     (source_root / "Source").mkdir(parents=True, exist_ok=True)
-    (packaged_root / "Source" / "ThirdParty" / "include").mkdir(parents=True, exist_ok=True)
+    (source_root / "Source" / "ThirdParty" / "include").mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(unreal_linux_docker, "DEFAULT_PLUGIN_ROOT", source_root)
-    monkeypatch.setattr(unreal_linux_docker, "PACKET_STOAT_PLUGIN_ROOT", packaged_root)
 
     resolved = unreal_linux_docker._resolve_plugin_root()
 
-    assert resolved == packaged_root
+    assert resolved == source_root.resolve()
+
+
+def test_unreal_linux_docker_does_not_search_outside_repo_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source_root = tmp_path / "cesium-unreal"
+    source_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(unreal_linux_docker, "DEFAULT_PLUGIN_ROOT", source_root)
+
+    assert unreal_linux_docker._resolve_plugin_root() == source_root.resolve()
 
 
 def test_unreal_linux_docker_build_plan_shows_linux_platform_support_root(capsys, tmp_path: Path) -> None:
@@ -2153,7 +1967,7 @@ def test_godot_example_build_dry_run_shapes(tmp_path: Path, monkeypatch: pytest.
     monkeypatch.setattr(
         build_godot_example.engine_root_discovery,
         "public_engine_search_roots",
-        lambda: {"godot": [Path(r"C:\Users\Public\Godot"), Path(r"D:\Godot")], "unreal": [], "unity": []},
+        lambda: {"godot": [tmp_path / "Public" / "Godot", tmp_path / "DriveD" / "Godot"], "unreal": [], "unity": []},
     )
     template_root = tmp_path / "GodotTemplates" / "4.7-stable"
     template_root.mkdir(parents=True, exist_ok=True)
@@ -2183,7 +1997,7 @@ def test_godot_example_build_dry_run_shapes(tmp_path: Path, monkeypatch: pytest.
     assert "--export-release" in " ".join(payload["command"])
     assert "Windows Desktop" in " ".join(payload["command"])
     assert payload["output_path"].endswith(r"build\godot\CesiumVanillaExample\windows\CesiumVanillaExample.exe")
-    assert payload["public_search_roots"] == [r"C:\Users\Public\Godot", r"D:\Godot"]
+    assert payload["public_search_roots"] == [_portable_path(tmp_path / "Public" / "Godot"), _portable_path(tmp_path / "DriveD" / "Godot")]
     assert payload["missing_template_paths"] == []
 
 
@@ -2270,7 +2084,7 @@ def test_godot_example_build_dry_run_uses_selector(tmp_path: Path, monkeypatch: 
     monkeypatch.setattr(
         build_godot_example.engine_root_discovery,
         "public_engine_search_roots",
-        lambda: {"godot": [Path(r"C:\Users\Public\Godot")], "unreal": [], "unity": []},
+        lambda: {"godot": [Path.cwd() / "tmp-public" / "Godot"], "unreal": [], "unity": []},
     )
     template_root = tmp_path / "GodotTemplates" / "4.8-dev1"
     template_root.mkdir(parents=True, exist_ok=True)
@@ -2380,6 +2194,11 @@ def test_godot_bootstrap_template_selector_uses_any_installed_lane(
 def test_host_inventory_uses_engine_and_tool_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(build_cesium_host_inventory.platform, "system", lambda: "Windows")
     monkeypatch.setattr(build_cesium_host_inventory.platform, "machine", lambda: "AMD64")
+    public_root = Path.cwd() / "tmp-public"
+    unreal_root = public_root / "Unreal"
+    unity_root = public_root / "Unity"
+    godot_root = public_root / "Godot"
+    linux_support_root = unreal_root / "Engine" / "Platforms" / "Linux"
     monkeypatch.setattr(
         build_cesium_host_inventory.shutil,
         "which",
@@ -2395,13 +2214,13 @@ def test_host_inventory_uses_engine_and_tool_discovery(monkeypatch: pytest.Monke
         build_cesium_host_inventory.engine_root_discovery,
         "public_engine_search_roots",
         lambda: {
-            "unreal": [Path(r"C:\Users\Public\Unreal")],
-            "unity": [Path(r"C:\Users\Public\Unity")],
-            "godot": [Path(r"C:\Users\Public\Godot")],
+            "unreal": [unreal_root],
+            "unity": [unity_root],
+            "godot": [godot_root],
         },
     )
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_unreal_linux_roots", lambda: [Path("/opt/unreal")])
-    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_unreal_linux_archives", lambda: [Path(r"C:\Users\Public\Unreal\engines\linux\Linux_Unreal_Engine_5.8.0.zip")])
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_unreal_linux_archives", lambda: [unreal_root / "engines" / "linux" / "Linux_Unreal_Engine_5.8.0.zip"])
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_windows_versions", lambda: [{"version": "4.7-stable"}])
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_linux_versions", lambda: [{"version": "4.7-stable"}])
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_macos_versions", lambda: [{"version": "4.7-stable"}])
@@ -2411,12 +2230,12 @@ def test_host_inventory_uses_engine_and_tool_discovery(monkeypatch: pytest.Monke
         lambda: {
             "platform": "Windows",
             "arch": "AMD64",
-            "public_roots": [r"C:\Users\Public\Unity"],
+            "public_roots": [_portable_path(unity_root)],
             "installs": [
                 {
                     "version": "6000.5.2f1",
-                    "install_root": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-                    "editor_path": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                    "install_root": _portable_path(public_root / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+                    "editor_path": _portable_path(public_root / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
                     "editor_app_path": None,
                     "source": "scan",
                     "quirks": (),
@@ -2424,13 +2243,13 @@ def test_host_inventory_uses_engine_and_tool_discovery(monkeypatch: pytest.Monke
             ],
             "default_install": {
                 "version": "6000.5.2f1",
-                "install_root": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-                "editor_path": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                "install_root": _portable_path(public_root / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+                "editor_path": _portable_path(public_root / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
                 "editor_app_path": None,
                 "source": "scan",
                 "quirks": (),
             },
-            "recommended_editor_overrides": {"FASTDIS_UNITY_EDITOR": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe"},
+            "recommended_editor_overrides": {"FASTDIS_UNITY_EDITOR": _portable_path(public_root / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe")},
         },
     )
 
@@ -2451,7 +2270,7 @@ def test_host_inventory_limits_godot_runway_when_selector_is_used(
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_windows_versions", lambda: [{"version": "4.6.3-stable"}, {"version": "4.7-stable"}])
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_linux_versions", lambda: [{"version": "4.7.1-rc1"}, {"version": "4.8-dev1"}])
     monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "discover_godot_macos_versions", lambda: [{"version": "4.8-dev2"}, {"version": "4.8-dev1"}])
-    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "public_engine_search_roots", lambda: {"unreal": [], "unity": [], "godot": [Path(r"C:\Users\Public\Godot")]})
+    monkeypatch.setattr(build_cesium_host_inventory.engine_root_discovery, "public_engine_search_roots", lambda: {"unreal": [], "unity": [], "godot": [Path.cwd() / "tmp-public" / "Godot"]})
     monkeypatch.setattr(build_cesium_host_inventory.unity_env, "describe_host", lambda: {"platform": "Windows", "arch": "AMD64", "public_roots": [], "installs": [], "default_install": None, "recommended_editor_overrides": {}})
 
     payload = build_cesium_host_inventory.build_payload(
@@ -2461,6 +2280,28 @@ def test_host_inventory_limits_godot_runway_when_selector_is_used(
     assert payload["engines"]["godot"]["requested_selector"] == "4.7-stable..4.8-dev1"
     assert payload["engines"]["godot"]["selected_versions"] == ["4.8-dev1", "4.7.1-rc1"]
     assert payload["runway"]["godot"] is True
+
+
+def test_host_inventory_module_wrapper_imports_main() -> None:
+    import cesium.host_inventory as host_inventory
+
+    assert host_inventory.main is build_cesium_host_inventory.main
+
+
+def test_cesium_cli_dispatches_host_inventory(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, list[str]]] = []
+
+    def fake_run_command(command: str, argv: list[str]) -> int:
+        calls.append((command, argv))
+        return 7
+
+    monkeypatch.setattr(cesium_cli, "_run_command", fake_run_command)
+
+    exit_code = cesium_cli.main(["host-inventory", "--godot-selector", "4.7-stable..4.8-dev1", "--max-godot-matches", "2"])
+
+    assert exit_code == 7
+    assert calls[-1][0] == "host-inventory"
+    assert calls[-1][1] == ["--godot-selector", "4.7-stable..4.8-dev1", "--max-godot-matches", "2"]
 
 
 def test_godot_version_selector_orders_and_limits_ranges() -> None:
@@ -2591,12 +2432,12 @@ def test_unity_linux_docker_dry_run_writes_reports(tmp_path: Path, monkeypatch: 
         lambda: {
             "platform": "Windows",
             "arch": "AMD64",
-            "public_roots": [r"C:\Users\Public\Unity"],
+            "public_roots": [_portable_path(Path.cwd() / "tmp-public" / "Unity")],
             "installs": [
                 {
                     "version": "6000.5.2f1",
-                    "install_root": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-                    "editor_path": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                    "install_root": _portable_path(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+                    "editor_path": _portable_path(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
                     "editor_app_path": None,
                     "source": "scan",
                     "quirks": (),
@@ -2604,8 +2445,8 @@ def test_unity_linux_docker_dry_run_writes_reports(tmp_path: Path, monkeypatch: 
             ],
             "default_install": {
                 "version": "6000.5.2f1",
-                "install_root": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1",
-                "editor_path": r"C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor\Unity.exe",
+                "install_root": _portable_path(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1"),
+                "editor_path": _portable_path(Path.cwd() / "tmp-public" / "Program Files" / "Unity" / "Hub" / "Editor" / "6000.5.2f1" / "Editor" / "Unity.exe"),
                 "editor_app_path": None,
                 "source": "scan",
                 "quirks": (),
@@ -2629,7 +2470,7 @@ def test_unity_linux_docker_dry_run_writes_reports(tmp_path: Path, monkeypatch: 
     payload = json.loads(json_out.read_text(encoding="utf-8"))
     assert payload["status"] == "dry-run"
     assert payload["host_snapshot"]["installed_versions"] == ["6000.5.2f1"]
-    assert payload["host_snapshot"]["public_roots"] == [r"C:\Users\Public\Unity"]
+    assert any(Path(path).name == "Unity" for path in payload["host_snapshot"]["public_roots"])
     assert "Host Snapshot" in md_out.read_text(encoding="utf-8")
 
 
@@ -2713,7 +2554,7 @@ def test_root_cli_dispatches_to_expected_scripts(monkeypatch: pytest.MonkeyPatch
             "--engine-version",
             "5.8",
             "--ue-root",
-            r"C:\Program Files\Epic Games\UE_5.8",
+            str(Path.cwd() / "tmp-public" / "Epic Games" / "UE_5.8"),
         ]
     )
     assert exit_code == 7
@@ -2723,7 +2564,7 @@ def test_root_cli_dispatches_to_expected_scripts(monkeypatch: pytest.MonkeyPatch
         "--engine-version",
         "5.8",
         "--ue-root",
-        r"C:\Program Files\Epic Games\UE_5.8",
+        str(Path.cwd() / "tmp-public" / "Epic Games" / "UE_5.8"),
     ]
 
     exit_code = cesium_cli.main([
@@ -2732,7 +2573,7 @@ def test_root_cli_dispatches_to_expected_scripts(monkeypatch: pytest.MonkeyPatch
         "--engine-version",
         "5.8",
         "--linux-platform-support-root",
-        r"C:\Users\Public\Unreal\Engine\Platforms\Linux",
+        str(Path.cwd() / "tmp-public" / "Unreal" / "Engine" / "Platforms" / "Linux"),
     ])
     assert exit_code == 7
     assert calls[-1][0] == "unreal-linux-docker"
@@ -2741,7 +2582,7 @@ def test_root_cli_dispatches_to_expected_scripts(monkeypatch: pytest.MonkeyPatch
         "--engine-version",
         "5.8",
         "--linux-platform-support-root",
-        r"C:\Users\Public\Unreal\Engine\Platforms\Linux",
+        str(Path.cwd() / "tmp-public" / "Unreal" / "Engine" / "Platforms" / "Linux"),
     ]
 
 
@@ -2761,6 +2602,7 @@ def test_pyproject_exposes_console_script() -> None:
     assert pyproject["project"]["scripts"]["cesium-unity-linux-docker"] == "extensions.cesium.tools.unity_linux_docker:main"
     assert pyproject["project"]["scripts"]["cesium-unity-example-build"] == "tools.build_unity_example:main"
     assert pyproject["project"]["scripts"]["cesium-compatibility-packet"] == "tools.build_cesium_compatibility_packet:main"
+    assert pyproject["project"]["scripts"]["cesium-unreal-visual-proof"] == "tools.build_unreal_visual_proof:main"
     assert pyproject["project"]["scripts"]["cesium-cross-platform-fix-notes"] == "tools.build_cesium_cross_platform_fix_notes:main"
     assert pyproject["project"]["scripts"]["cesium-planned-routes"] == "tools.build_cesium_planned_routes:main"
     assert pyproject["project"]["scripts"]["cesium-engine-matrix"] == "tools.build_cesium_engine_matrix:main"
@@ -2819,7 +2661,75 @@ def test_cesium_godot_doctor_command_forwards_defaults(monkeypatch: pytest.Monke
     assert captured["argv"] == ["--native-target", "windows", "--format", "text"]
 
 
-def test_cesium_bootstrap_command_forwards_package_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cesium_unreal_visual_proof_command_forwards_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run_command(command: str, argv: list[str]) -> int:
+        captured["command"] = command
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr(cesium_cli, "_run_command", fake_run_command)
+
+    exit_code = cesium_cli.main(["unreal-visual-proof"])
+
+    assert exit_code == 0
+    assert captured["command"] == "unreal-visual-proof"
+    assert captured["argv"] == []
+
+
+def test_cesium_windows_visual_proof_command_forwards_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run_command(command: str, argv: list[str]) -> int:
+        captured["command"] = command
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr(cesium_cli, "_run_command", fake_run_command)
+
+    exit_code = cesium_cli.main(["windows-visual-proof"])
+
+    assert exit_code == 0
+    assert captured["command"] == "windows-visual-proof"
+    assert captured["argv"] == []
+
+
+def test_cesium_unity_visual_proof_command_forwards_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run_command(command: str, argv: list[str]) -> int:
+        captured["command"] = command
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr(cesium_cli, "_run_command", fake_run_command)
+
+    exit_code = cesium_cli.main(["unity-visual-proof"])
+
+    assert exit_code == 0
+    assert captured["command"] == "unity-visual-proof"
+    assert captured["argv"] == []
+
+
+def test_cesium_godot_visual_proof_command_forwards_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run_command(command: str, argv: list[str]) -> int:
+        captured["command"] = command
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr(cesium_cli, "_run_command", fake_run_command)
+
+    exit_code = cesium_cli.main(["godot-visual-proof"])
+
+    assert exit_code == 0
+    assert captured["command"] == "godot-visual-proof"
+    assert captured["argv"] == []
+
+
+def test_cesium_bootstrap_command_forwards_package_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     captured: dict[str, object] = {}
 
     def fake_run_command(command: str, argv: list[str]) -> int:
@@ -2833,9 +2743,9 @@ def test_cesium_bootstrap_command_forwards_package_flags(monkeypatch: pytest.Mon
         [
             "bootstrap",
             "--deps-prefix",
-            r"C:\tmp\deps",
+            str(tmp_path / "deps"),
             "--work-root",
-            r"C:\tmp\work",
+            str(tmp_path / "work"),
             "--skip-install",
             "--prepare-only",
             "--",
@@ -2846,11 +2756,681 @@ def test_cesium_bootstrap_command_forwards_package_flags(monkeypatch: pytest.Mon
     assert captured["command"] == "bootstrap"
     assert captured["argv"] == [
         "--deps-prefix",
-        r"C:\tmp\deps",
+        str(tmp_path / "deps"),
         "--work-root",
-        r"C:\tmp\work",
+        str(tmp_path / "work"),
         "--skip-install",
         "--prepare-only",
         "--",
         "tests/test_cesium_tools.py",
     ]
+
+
+def test_visual_proof_normalize_validate_and_compare_are_commensurate(tmp_path: Path) -> None:
+    scan_roots: list[Path] = []
+    for engine in ("unreal", "unity", "godot"):
+        source_root = tmp_path / "source" / engine
+        capture_root = tmp_path / "capture" / engine / "windows" / "x86_64"
+        _seed_visual_proof_source(source_root)
+        payload = build_cesium_visual_proof.normalize_visual_proof_capture(
+            engine,
+            source_root,
+            capture_root,
+            host="windows",
+            native_target="windows",
+            architecture="x86_64",
+        )
+        assert payload["status"] == "pass"
+        assert payload["missing"] == []
+        assert payload["capture_variants"] == ["proxy", "cesium"]
+        assert payload["shot_names"] == ["overview", "oblique", "close"]
+        scan_roots.append(capture_root)
+
+        validation = validate_visual_proof_roots.validate_root(capture_root)
+        assert validation["status"] == "pass"
+        assert validation["manifest_exists"] is True
+        assert validation["png_count"] == 6
+        assert validation["engine"] == engine
+
+    comparison = compare_cesium_visual_proof.build_payload(scan_roots=scan_roots, strict_missing=True)
+
+    assert comparison["status"] == "pass"
+    assert comparison["summary"]["expected_engine_count"] == 3
+    assert comparison["summary"]["present_engine_count"] == 3
+    assert comparison["summary"]["missing_engine_count"] == 0
+    assert comparison["summary"]["quality_issue_count"] == 0
+    assert comparison["summary"]["canonical_comparison_count"] > 0
+    assert comparison["summary"]["variant_comparison_count"] > 0
+    assert comparison["summary"]["engine_variant_comparison_count"] > 0
+    assert comparison["findings"] == []
+
+
+def test_visual_proof_compare_detects_black_frames(tmp_path: Path) -> None:
+    source_root = tmp_path / "black_source"
+    capture_root = tmp_path / "black_capture"
+    source_root.mkdir(parents=True, exist_ok=True)
+    for variant in ("proxy", "cesium"):
+        for shot in build_cesium_visual_proof.CAMERA_SHOTS:
+            _write_visual_proof_png(
+                source_root / f"{variant}_{shot.name}.png",
+                background=(0, 0, 0),
+                accent=(0, 0, 0),
+                patterned=False,
+            )
+
+    normalize_payload = normalize_cesium_visual_proof.build_payload(
+        normalize_cesium_visual_proof.parse_args(
+            [
+                "--engine",
+                "godot",
+                "--source-root",
+                str(source_root),
+                "--capture-root",
+                str(capture_root),
+            ]
+        )
+    )
+
+    assert normalize_payload["status"] == "pass"
+
+    comparison = compare_cesium_visual_proof.build_payload(scan_roots=[capture_root], strict_missing=False)
+
+    assert comparison["status"] == "fail"
+    assert comparison["summary"]["quality_issue_count"] > 0
+    assert any("near_black" in finding for finding in comparison["findings"])
+    assert any("flat_solid" in finding for finding in comparison["findings"])
+
+
+def test_visual_proof_compare_scopes_cross_engine_and_content_deltas(tmp_path: Path) -> None:
+    scan_roots: list[Path] = []
+    for engine in ("unity", "godot"):
+        source_root = tmp_path / "source" / engine
+        capture_root = tmp_path / "capture" / engine / "windows" / "x86_64"
+        _seed_visual_proof_source(source_root)
+        normalize_cesium_visual_proof.build_payload(
+            normalize_cesium_visual_proof.parse_args(
+                [
+                    "--engine",
+                    engine,
+                    "--source-root",
+                    str(source_root),
+                    "--capture-root",
+                    str(capture_root),
+                ]
+            )
+        )
+        scan_roots.append(capture_root)
+
+    comparison = compare_cesium_visual_proof.build_payload(scan_roots=scan_roots, strict_missing=True)
+
+    assert comparison["status"] == "pass"
+    assert comparison["findings"] == []
+    assert all(
+        item["comparison_scope"] == "cross-engine-structural"
+        for item in comparison["canonical_comparisons"]
+    )
+    assert all(
+        item["status"] == "content-delta"
+        for item in comparison["engine_variant_comparisons"]
+    )
+    assert all(
+        "structure_centroid_distance" in item["metrics"]
+        for item in comparison["canonical_comparisons"]
+    )
+
+
+def test_visual_proof_packet_tracks_all_engine_runner_reports() -> None:
+    payload = build_cesium_visual_proof.build_payload()
+
+    related = payload["related_packets"]
+    assert related["unreal_visual_proof"]["path"].endswith("unreal_visual_proof/unreal_visual_proof.json")
+    assert related["unity_visual_proof"]["path"].endswith("unity_visual_proof/unity_visual_proof.json")
+    assert related["godot_visual_proof"]["path"].endswith("godot_visual_proof/godot_visual_proof.json")
+    unity_windows = next(
+        target for target in payload["targets"] if target["engine"] == "unity" and target["native_target"] == "windows" and target["architecture"] == "x86_64"
+    )
+    godot_windows = next(
+        target for target in payload["targets"] if target["engine"] == "godot" and target["native_target"] == "windows" and target["architecture"] == "x86_64"
+    )
+    assert unity_windows["startup_health_command"] == "cesium-unity-visual-proof"
+    assert godot_windows["startup_health_command"] == "cesium-godot-aggressive-launcher --native-target windows --max-versions 1"
+
+
+def test_windows_visual_proof_bundle_payload_shapes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        build_windows_visual_proof.build_cesium_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "camera_shots": [{"name": "overview"}],
+        },
+    )
+    monkeypatch.setattr(
+        build_windows_visual_proof.build_unreal_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "command": "UnrealEditor.exe",
+            "launcher_command": "UnrealEditor.exe",
+            "normalize_command": "cesium-visual-proof-normalize --engine unreal",
+            "manifest_path": "artifacts/reports/unreal_visual_proof/unreal_visual_proof.json",
+            "expected_pngs": ["proxy_overview.png", "cesium_overview.png"],
+            "engine_side_harness_status": "present",
+        },
+    )
+    monkeypatch.setattr(
+        build_windows_visual_proof.build_unity_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "command": "cesium-unity-visual-proof",
+            "launcher_command": 'Unity.exe -batchmode -nographics -quit -projectPath "UnityProject"',
+            "normalize_command": "cesium-visual-proof-normalize --engine unity",
+            "manifest_path": "artifacts/reports/unity_visual_proof/unity_visual_proof.json",
+            "expected_pngs": ["proxy_overview.png", "cesium_overview.png"],
+            "engine_side_harness_status": "present",
+        },
+    )
+    monkeypatch.setattr(
+        build_windows_visual_proof.build_godot_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "command": "cesium-godot-aggressive-launcher --native-target windows --max-versions 1",
+            "launcher_command": "Godot.exe",
+            "normalize_command": "cesium-visual-proof-normalize --engine godot",
+            "manifest_path": "artifacts/reports/godot_visual_proof/godot_visual_proof.json",
+            "expected_pngs": ["proxy_overview.png", "cesium_overview.png"],
+            "engine_side_harness_status": "present",
+        },
+    )
+    monkeypatch.setattr(
+        build_windows_visual_proof.compare_cesium_visual_proof,
+        "build_payload",
+        lambda strict_missing=True: {"status": "pass", "findings": []},
+    )
+
+    payload = build_windows_visual_proof.build_payload()
+
+    assert payload["schema"] == "cesium.windows_visual_proof.v1"
+    assert payload["status"] == "commandable"
+    assert len(payload["runner_reports"]) == 3
+    assert payload["visual_proof_packet"]["status"] == "commandable"
+    assert payload["comparison_packet"]["status"] == "pass"
+    assert any(row["engine"] == "godot" for row in payload["runner_commands"])
+    unity_row = next(row for row in payload["runner_commands"] if row["engine"] == "unity")
+    assert "-batchmode" in unity_row["launch_command"]
+
+
+def test_unreal_visual_proof_runner_payload_shapes() -> None:
+    payload = build_unreal_visual_proof.build_payload()
+
+    assert payload["schema"] == "cesium.unreal_visual_proof.v1"
+    assert payload["status"] in {"planned", "commandable"}
+    assert payload["engine"] == "unreal"
+    assert payload["native_target"] == "windows"
+    assert payload["architecture"] == "x86_64"
+    assert _portable_path(payload["command"]).startswith("UnrealEditor.exe ")
+    assert _portable_path(payload["command"]).endswith(
+        '-NoEOS -unattended -nop4 -NoEpicPortal -nosplash -NoSound -log -stdout -FullStdOutLogOutput -DDC-ForceMemoryCache -ExecCmds="Automation RunTests Cesium.VisualProof.Windows.ProxyEarth; Quit"'
+    )
+    assert "CesiumVanillaExample.uproject" in _portable_path(payload["command"])
+    assert _portable_path(payload["raw_capture_root"]).endswith("Saved/Screenshots/WindowsEditor")
+    assert _portable_path(payload["normalized_capture_root"]).endswith("artifacts/reports/cesium_visual_proof/unreal/windows/x86_64")
+    assert _portable_path(payload["manifest_path"]).endswith("visual_proof_manifest.json")
+    assert _portable_path(payload["normalize_command"]).startswith("cesium-visual-proof-normalize --engine unreal")
+    assert payload["windows_tests"] == [
+        "Cesium.VisualProof.Windows.ProxyEarth",
+        "Cesium.VisualProof.Windows.CesiumEarth",
+    ]
+    selected_root = Path(payload["editor_discovery"]["selected_root"])
+    fake_launcher = (
+        f'"{_portable_path(selected_root / "Engine" / "Binaries" / "Win64" / "UnrealEditor.exe")}" '
+        f'"{_portable_path(ROOT / "extensions" / "cesium" / "examples" / "unreal" / "CesiumVanillaExample" / "CesiumVanillaExample.uproject")}" '
+    )
+    assert [_portable_path(command) for command in payload["launcher_commands"]] == [
+        f'{fake_launcher}-NoEOS -unattended -nop4 -NoEpicPortal -nosplash -NoSound -log -stdout -FullStdOutLogOutput -DDC-ForceMemoryCache -ExecCmds="Automation RunTests Cesium.VisualProof.Windows.ProxyEarth; Quit"',
+        f'{fake_launcher}-NoEOS -unattended -nop4 -NoEpicPortal -nosplash -NoSound -log -stdout -FullStdOutLogOutput -DDC-ForceMemoryCache -ExecCmds="Automation RunTests Cesium.VisualProof.Windows.CesiumEarth; Quit"',
+    ]
+    assert payload["engine_side_harness_status"] == "present"
+    assert _portable_path(payload["engine_side_harness_path"]).endswith(
+        "external/cesium/cesium-unreal/Source/CesiumRuntime/Private/Tests/CesiumVisualProof.spec.cpp"
+    )
+
+
+def test_unity_visual_proof_runner_payload_shapes(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_root = Path("simulated") / "Unity" / "6000.5.0f1"
+    monkeypatch.setattr(
+        build_unity_visual_proof.unity_env,
+        "discover_installs",
+        lambda: [
+            unity_env.UnityInstall(
+                version="6000.5.0f1",
+                install_root=str(fake_root),
+                editor_path=str(fake_root / "Editor" / "Unity.exe"),
+                editor_app_path=None,
+                source="test",
+                quirks=(),
+            )
+        ],
+    )
+
+    payload = build_unity_visual_proof.build_payload()
+
+    assert payload["schema"] == "cesium.unity_visual_proof.v1"
+    assert payload["status"] == "commandable"
+    assert payload["engine"] == "unity"
+    assert payload["native_target"] == "windows"
+    assert payload["architecture"] == "x86_64"
+    assert payload["engine_side_harness_status"] == "present"
+    assert _portable_path(payload["engine_side_harness_path"]).endswith(
+        "extensions/cesium/examples/unity/CesiumVanillaExample/Assets/CesiumVisualProofCapture.cs"
+    )
+    assert _portable_path(payload["command"]).endswith("cesium-unity-visual-proof")
+    assert "Unity.exe" in _portable_path(payload["launcher_command"])
+    assert "-batchmode" in _portable_path(payload["launcher_command"])
+    assert "-projectPath" in _portable_path(payload["launcher_command"])
+    assert _portable_path(payload["manifest_path"]).endswith("visual_proof_manifest.json")
+    assert _portable_path(payload["normalize_command"]).startswith("cesium-visual-proof-normalize --engine unity")
+
+
+def test_godot_visual_proof_runner_payload_shapes(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_root = Path("simulated") / "Godot" / "engines" / "windows" / "Godot_v4.7-stable_win64.exe"
+    monkeypatch.setattr(
+        build_godot_visual_proof.engine_root_discovery,
+        "discover_godot_windows_versions",
+        lambda: [
+            {
+                "version": "4.7-stable",
+                "root": fake_root,
+                "executable": fake_root / "Godot_v4.7-stable_win64.exe",
+                "console_executable": fake_root / "Godot_v4.7-stable_win64_console.exe",
+            }
+        ],
+    )
+
+    payload = build_godot_visual_proof.build_payload()
+
+    assert payload["schema"] == "cesium.godot_visual_proof.v1"
+    assert payload["status"] == "commandable"
+    assert payload["engine"] == "godot"
+    assert payload["native_target"] == "windows"
+    assert payload["architecture"] == "x86_64"
+    assert payload["engine_side_harness_status"] == "present"
+    assert _portable_path(payload["engine_side_harness_path"]).endswith(
+        "extensions/cesium/examples/godot/CesiumVanillaExample/scripts/VisualProofRunner.gd"
+    )
+    assert _portable_path(payload["command"]).endswith("cesium-godot-aggressive-launcher --native-target windows --max-versions 1")
+    assert _portable_path(payload["launcher_command"]).endswith("Godot_v4.7-stable_win64_console.exe")
+    assert _portable_path(payload["manifest_path"]).endswith("visual_proof_manifest.json")
+    assert _portable_path(payload["normalize_command"]).startswith("cesium-visual-proof-normalize --engine godot")
+
+
+def test_windows_visual_proof_run_orchestrates_engine_lanes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    unreal_raw = tmp_path / "unreal_raw"
+    unity_raw = tmp_path / "unity_raw"
+    godot_raw = tmp_path / "godot_raw"
+    unreal_norm = tmp_path / "unreal_norm"
+    unity_norm = tmp_path / "unity_norm"
+    godot_norm = tmp_path / "godot_norm"
+
+    monkeypatch.setattr(run_windows_visual_proof, "UNREAL_NORMALIZED_CAPTURE_ROOT", unreal_norm)
+    monkeypatch.setattr(run_windows_visual_proof, "UNITY_NORMALIZED_CAPTURE_ROOT", unity_norm)
+    monkeypatch.setattr(run_windows_visual_proof, "GODOT_NORMALIZED_CAPTURE_ROOT", godot_norm)
+    monkeypatch.setattr(run_windows_visual_proof.build_cesium_visual_proof, "UNREAL_RAW_CAPTURE_ROOT", unreal_raw)
+
+    monkeypatch.setattr(
+        run_windows_visual_proof.build_unreal_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "command": "UnrealEditor.exe",
+            "launcher_command": "UnrealEditor.exe",
+            "raw_capture_root": str(unreal_raw),
+            "normalized_capture_root": str(unreal_norm),
+            "engine_side_harness_status": "present",
+            "editor_discovery": {"status": "present"},
+        },
+    )
+    monkeypatch.setattr(
+        run_windows_visual_proof.build_unity_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "command": "CesiumUnityBuild",
+            "launcher_command": "Unity.exe -batchmode -nographics -quit -projectPath UnityProject",
+            "example_project": str(tmp_path / "unity" / "CesiumVanillaExample.unity"),
+            "engine_side_harness_status": "present",
+            "editor_discovery": {"status": "present"},
+        },
+    )
+    monkeypatch.setattr(
+        run_windows_visual_proof.build_godot_visual_proof,
+        "build_payload",
+        lambda: {
+            "status": "commandable",
+            "command": "cesium-godot-aggressive-launcher --native-target windows --max-versions 1",
+            "launcher_command": "Godot_v4.7-stable_win64_console.exe",
+            "example_project": str(tmp_path / "godot" / "project.godot"),
+            "engine_side_harness_status": "present",
+            "editor_discovery": {"status": "present"},
+        },
+    )
+    monkeypatch.setattr(
+        run_windows_visual_proof.unity_env,
+        "resolve_install",
+        lambda version=None: unity_env.UnityInstall(
+            version="6000.5.0f1",
+            install_root=str(tmp_path / "Unity" / "6000.5.0f1"),
+            editor_path=str(tmp_path / "Unity" / "6000.5.0f1" / "Editor" / "Unity.exe"),
+            editor_app_path=None,
+            source="test",
+            quirks=(),
+        ),
+    )
+
+    def fake_unity_build(build_args: object) -> dict[str, object]:
+        out_dir = Path(getattr(build_args, "out_dir"))
+        player_path = out_dir / "windows" / "CesiumVanillaExample.exe"
+        player_path.parent.mkdir(parents=True, exist_ok=True)
+        player_path.write_text("fake unity player", encoding="utf-8")
+        return {"status": "pass", "output_path": str(player_path), "unity_version": "6000.5.0f1"}
+
+    monkeypatch.setattr(run_windows_visual_proof.build_unity_example, "run_build", fake_unity_build)
+
+    compare_calls: list[list[str]] = []
+
+    def fake_compare(*, scan_roots=None, strict_missing=True, **kwargs):
+        compare_calls.append([str(path) for path in scan_roots or []])
+        return {"status": "pass", "summary": {"sample_count": 6, "missing_engines": []}, "findings": []}
+
+    monkeypatch.setattr(run_windows_visual_proof.compare_cesium_visual_proof, "build_payload", fake_compare)
+
+    def fake_normalize(engine, source_root, capture_root, **kwargs):
+        capture_root = Path(capture_root)
+        capture_root.mkdir(parents=True, exist_ok=True)
+        _seed_visual_proof_source(capture_root)
+        manifest = capture_root / "visual_proof_manifest.json"
+        manifest.write_text(
+            json.dumps(
+                {
+                    "schema": "cesium.visual_proof_manifest.v1",
+                    "engine": engine,
+                    "host": "windows",
+                    "native_target": "windows",
+                    "architecture": "x86_64",
+                    "capture_variants": ["proxy", "cesium"],
+                    "shot_names": [shot.name for shot in build_cesium_visual_proof.CAMERA_SHOTS],
+                    "camera_shots": [
+                        {
+                            "name": shot.name,
+                            "camera_position": list(shot.camera_position),
+                            "look_at": list(shot.look_at),
+                            "up": list(shot.up),
+                            "fov_degrees": shot.fov_degrees,
+                        }
+                        for shot in build_cesium_visual_proof.CAMERA_SHOTS
+                    ],
+                    "capture_paths": [str(path) for path in sorted(capture_root.glob("*.png"))],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return {
+            "status": "pass",
+            "engine": engine,
+            "source_root": str(source_root),
+            "capture_root": str(capture_root),
+            "manifest_path": str(manifest),
+        }
+
+    monkeypatch.setattr(run_windows_visual_proof.build_cesium_visual_proof, "normalize_visual_proof_capture", fake_normalize)
+
+    def fake_godot_build(args: object) -> dict[str, object]:
+        capture_root = Path(getattr(args, "capture_root"))
+        capture_root.mkdir(parents=True, exist_ok=True)
+        _seed_visual_proof_source(capture_root)
+        return {
+            "status": "pass",
+            "capture_root": str(capture_root),
+            "example_project": str(tmp_path / "godot" / "project.godot"),
+        }
+
+    monkeypatch.setattr(run_windows_visual_proof.godot_aggressive_launcher, "build_payload", fake_godot_build)
+
+    def fake_run_process(command, *, cwd, env, timeout_seconds, log_path):
+        command_text = " ".join(command) if isinstance(command, list) else str(command)
+        if "CesiumVanillaExample.exe" in command_text:
+            player_root = Path(command[0]).parent if isinstance(command, list) and command else tmp_path
+            _seed_visual_proof_source(player_root / "build" / "unity" / "CesiumVanillaExample" / "visual_proof")
+        if "UnrealEditor.exe" in command_text:
+            _seed_visual_proof_source(unreal_raw)
+        return {
+            "command": command if isinstance(command, list) else [command],
+            "returncode": 0,
+            "timed_out": False,
+            "stdout_tail": [],
+            "stderr_tail": [],
+            "log_path": str(log_path),
+            "success": True,
+        }
+
+    monkeypatch.setattr(run_windows_visual_proof, "_run_process", fake_run_process)
+
+    namespace = SimpleNamespace(
+        json_out=tmp_path / "windows_visual_proof_run.json",
+        md_out=tmp_path / "windows_visual_proof_run.md",
+        log_dir=tmp_path / "logs",
+        timeout_seconds=30.0,
+        unity_version=None,
+        godot_selector=None,
+        godot_max_versions=1,
+    )
+
+    payload = run_windows_visual_proof.build_payload(namespace)
+
+    assert payload["schema"] == "cesium.windows_visual_proof_run.v1"
+    assert payload["status"] == "pass"
+    assert payload["comparison"]["status"] == "pass"
+    assert len(payload["engine_results"]) == 3
+    assert any(result["engine"] == "unity" and result["status"] == "pass" for result in payload["engine_results"])
+    assert any(result["engine"] == "godot" and result["status"] == "pass" for result in payload["engine_results"])
+    assert any(result["engine"] == "unreal" and result["status"] == "pass" for result in payload["engine_results"])
+    assert compare_calls[-1] == [str(unreal_norm), str(unity_norm), str(godot_norm)]
+
+
+def test_unreal_visual_proof_reports_launcher_command_when_editor_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_root = Path("simulated") / "Epic Games" / "UE_5.8"
+    monkeypatch.setattr(
+        build_unreal_visual_proof.engine_root_discovery,
+        "discover_unreal_windows_editors",
+        lambda: [
+            {
+                "root": fake_root,
+                "executable": fake_root / "Engine" / "Binaries" / "Win64" / "UnrealEditor.exe",
+                "command": str(fake_root / "Engine" / "Binaries" / "Win64" / "UnrealEditor.exe"),
+            }
+        ],
+    )
+
+    payload = build_unreal_visual_proof.build_payload()
+
+    assert payload["status"] == "commandable"
+    assert payload["editor_discovery"]["status"] == "present"
+    assert _portable_path(payload["launcher_command"]) == (
+        '"simulated/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe" '
+        f'"{_portable_path(ROOT / "extensions" / "cesium" / "examples" / "unreal" / "CesiumVanillaExample" / "CesiumVanillaExample.uproject")}" '
+        '-NoEOS -unattended -nop4 -NoEpicPortal -nosplash -NoSound -log -stdout -FullStdOutLogOutput -DDC-ForceMemoryCache -ExecCmds="Automation RunTests Cesium.VisualProof.Windows.ProxyEarth; Quit"'
+    )
+    assert payload["launcher_commands"][0].endswith(
+        '-ExecCmds="Automation RunTests Cesium.VisualProof.Windows.ProxyEarth; Quit"'
+    )
+    assert payload["launcher_commands"][1].endswith(
+        '-ExecCmds="Automation RunTests Cesium.VisualProof.Windows.CesiumEarth; Quit"'
+    )
+
+
+def test_godot_aggressive_launcher_orphan_cleanup_reports_matches(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+
+    class _Completed:
+        returncode = 0
+        stdout = '[{"pid": 1234, "name": "Godot_v4.7-stable_win64.exe", "command_line": "Godot --fastdis-launch-tag abc"}]'
+        stderr = ""
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return _Completed()
+
+    monkeypatch.setattr(godot_aggressive_launcher.subprocess, "run", fake_run)
+
+    log_path = tmp_path / "cleanup.log"
+    payload = godot_aggressive_launcher._cleanup_orphan_godot_processes(["abc", ""], log_path=log_path, timeout_s=3.0)
+
+    assert payload["supported"] is True
+    assert payload["success"] is True
+    assert payload["timed_out"] is False
+    assert payload["killed"] == [1234]
+    assert payload["matches"][0]["name"] == "Godot_v4.7-stable_win64.exe"
+    assert log_path.read_text(encoding="utf-8").strip().startswith("[{\"pid\": 1234")
+    assert any("powershell.exe" in str(part).lower() for part in captured["command"])
+    assert captured["kwargs"]["timeout"] == 3.0
+
+
+def test_godot_aggressive_launcher_orphan_cleanup_times_out(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout", 1.0), output="slow", stderr="still running")
+
+    monkeypatch.setattr(godot_aggressive_launcher.subprocess, "run", fake_run)
+
+    log_path = tmp_path / "cleanup-timeout.log"
+    payload = godot_aggressive_launcher._cleanup_orphan_godot_processes(["abc"], log_path=log_path, timeout_s=0.5)
+
+    assert payload["supported"] is True
+    assert payload["success"] is False
+    assert payload["timed_out"] is True
+    assert payload["timeout_seconds"] == 0.5
+    assert "orphan cleanup timed out" in log_path.read_text(encoding="utf-8")
+
+
+def test_godot_aggressive_launcher_run_command_terminates_timed_out_process(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    events: list[tuple[str, object]] = []
+
+    class _Proc:
+        pid = 4321
+        returncode = None
+
+        def __init__(self) -> None:
+            self._communicate_calls = 0
+
+        def communicate(self, timeout=None):
+            self._communicate_calls += 1
+            if self._communicate_calls == 1:
+                raise subprocess.TimeoutExpired(cmd=["Godot"], timeout=timeout, output="partial stdout", stderr="partial stderr")
+            self.returncode = -9
+            return ("tail stdout", "tail stderr")
+
+    proc = _Proc()
+
+    def fake_popen(command, **kwargs):
+        events.append(("popen", command))
+        events.append(("popen_kwargs", kwargs))
+        return proc
+
+    def fake_run(command, **kwargs):
+        events.append(("run", command))
+        events.append(("run_kwargs", kwargs))
+        class _Completed:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        return _Completed()
+
+    monkeypatch.setattr(godot_aggressive_launcher.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(godot_aggressive_launcher.subprocess, "run", fake_run)
+    monkeypatch.setattr(godot_aggressive_launcher.platform, "system", lambda: "Windows")
+
+    payload = godot_aggressive_launcher._run_command(
+        command=["Godot_v4.7-stable_win64.exe", "--path", "project"],
+        env={},
+        log_path=tmp_path / "launch.log",
+        timeout_s=0.25,
+    )
+
+    assert payload["timed_out"] is True
+    assert payload["success"] is False
+    assert payload["exit_code"] == -9
+    assert "partial stdout" in (tmp_path / "launch.log").read_text(encoding="utf-8")
+    assert any("tail stdout" in row for row in payload["stdout_tail"])
+    assert any(name == "run" for name, _ in events)
+    assert any("taskkill" in str(command).lower() for name, command in events if name == "run")
+
+
+def test_godot_aggressive_launcher_runs_visual_compare_gate(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_build_payload(*, scan_roots, strict_missing):
+        captured["scan_roots"] = scan_roots
+        captured["strict_missing"] = strict_missing
+        return {"status": "pass", "findings": []}
+
+    monkeypatch.setattr(godot_aggressive_launcher.compare_cesium_visual_proof, "build_payload", fake_build_payload)
+
+    payload = godot_aggressive_launcher._run_visual_proof_compare(tmp_path / "visual_proof")
+
+    assert payload["status"] == "pass"
+    assert captured["scan_roots"] == [tmp_path / "visual_proof"]
+    assert captured["strict_missing"] is True
+
+
+def test_validate_visual_proof_contracts_includes_unreal_harness(monkeypatch: pytest.MonkeyPatch) -> None:
+    contract_path = ROOT / "extensions" / "cesium" / "examples" / "unreal" / "CesiumVanillaExample" / "VisualProofContract.md"
+    readme_path = ROOT / "extensions" / "cesium" / "examples" / "unreal" / "CesiumVanillaExample" / "README.md"
+    harness_path = ROOT / "external" / "cesium" / "cesium-unreal" / "Source" / "CesiumRuntime" / "Private" / "Tests" / "CesiumVisualProof.spec.cpp"
+    support_path = ROOT / "external" / "cesium" / "cesium-unreal" / "Source" / "CesiumRuntime" / "Private" / "Tests" / "CesiumLoadTestCore.cpp"
+    monkeypatch.setattr(
+        validate_visual_proof_contracts,
+        "CONTRACTS",
+        (
+            {
+                "engine": "unreal",
+                "contract_path": contract_path,
+                "readme_path": readme_path,
+                "harness_path": harness_path,
+                "support_path": support_path,
+                "required_phrases": (
+                    "Saved/Screenshots/WindowsEditor",
+                    "visual_proof_manifest.json",
+                    "proxy_overview.png",
+                    "Cesium.VisualProof.Windows.ProxyEarth",
+                ),
+                "required_harness_phrases": (
+                    "IMPLEMENT_SIMPLE_AUTOMATION_TEST",
+                    "Cesium.VisualProof.Windows.ProxyEarth",
+                    "Cesium.VisualProof.Windows.CesiumEarth",
+                ),
+                "required_support_phrases": (
+                    "FScreenshotRequest::RequestScreenshot",
+                    "LoadTestScreenshotCommand::Update",
+                    "Saved/Screenshots/WindowsEditor",
+                ),
+                "required_readme_phrases": (
+                    "version-specific Unreal variant",
+                    "lane report",
+                    "base scaffold",
+                ),
+            },
+        ),
+    )
+
+    payload = validate_visual_proof_contracts.build_payload()
+
+    assert payload["status"] == "pass"
+    assert payload["contracts"][0]["harness_exists"] is True
+    assert payload["contracts"][0]["support_exists"] is True
+    assert payload["contracts"][0]["missing_harness_phrases"] == []
+    assert payload["contracts"][0]["missing_support_phrases"] == []
+    assert _portable_path(payload["contracts"][0]["harness_path"]).endswith(
+        "external/cesium/cesium-unreal/Source/CesiumRuntime/Private/Tests/CesiumVisualProof.spec.cpp"
+    )

@@ -9,11 +9,42 @@ import re
 from pathlib import Path
 
 
-PUBLIC_UNREAL_ROOT = Path(r"C:\Users\Public\Unreal")
-PUBLIC_GODOT_ROOT = Path(r"C:\Users\Public\Godot")
-PUBLIC_UNITY_ROOT = Path(r"C:\Users\Public\Unity")
-PROGRAM_FILES_EPIC_GAMES = Path(r"C:\Program Files\Epic Games")
-PROGRAM_FILES_UNITY = Path(r"C:\Program Files\Unity\Hub\Editor")
+def public_share_root() -> Path:
+    system = platform.system().lower()
+    if system == "windows":
+        return Path(os.environ.get("PUBLIC", r"C:\Users\Public"))
+    if system == "darwin":
+        return Path("/Users/Shared")
+    return Path(os.environ.get("PUBLIC", str(Path.home() / "Public")))
+
+
+def program_files_root(*parts: str) -> Path:
+    base = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+    return base.joinpath(*parts)
+
+
+def unreal_public_root() -> Path:
+    return public_share_root() / "Unreal"
+
+
+def godot_public_root() -> Path:
+    return public_share_root() / "Godot"
+
+
+def unity_public_root() -> Path:
+    return public_share_root() / "Unity"
+
+
+PUBLIC_UNREAL_MAC_ROOT = Path("/Users/Shared/Epic Games")
+PUBLIC_UNREAL_ROOT = unreal_public_root()
+PUBLIC_GODOT_ROOT = godot_public_root()
+PUBLIC_UNITY_ROOT = unity_public_root()
+PROGRAM_FILES_EPIC_GAMES = program_files_root("Epic Games")
+PROGRAM_FILES_UNITY = program_files_root("Unity", "Hub", "Editor")
+MACOS_UNITY_ROOTS = [
+    Path("/Applications/Unity/Hub/Editor"),
+    Path.home() / "Applications" / "Unity" / "Hub" / "Editor",
+]
 GODOT_WINDOWS_VERSION_PATTERN = re.compile(r"^Godot_v(?P<version>\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9]+)?)_win64\.exe$")
 GODOT_LINUX_VERSION_PATTERN = re.compile(r"^Godot_v(?P<version>\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9]+)?)_linux\.x86_64$")
 GODOT_MACOS_VERSION_PATTERN = re.compile(r"^Godot_v(?P<version>\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9]+)?)_macos(?:[._-][A-Za-z0-9]+)*$")
@@ -75,14 +106,15 @@ def _unique_paths(paths: list[Path]) -> list[Path]:
 
 def discover_unreal_linux_roots() -> list[Path]:
     candidates: list[Path] = []
-    for unreal_root in [PUBLIC_UNREAL_ROOT, *_configured_roots("FASTDIS_UNREAL_ROOTS")]:
+    for unreal_root in [unreal_public_root(), *_configured_roots("FASTDIS_UNREAL_ROOTS")]:
         public_linux_root = unreal_root / "engines" / "linux"
         if public_linux_root.is_dir():
             for child in sorted(public_linux_root.iterdir()):
                 if child.is_dir() and _is_unreal_linux_root(child):
                     candidates.append(child)
-    if PROGRAM_FILES_EPIC_GAMES.is_dir():
-        for child in sorted(PROGRAM_FILES_EPIC_GAMES.iterdir()):
+    program_files = program_files_root("Epic Games")
+    if platform.system().lower() == "windows" and program_files.is_dir():
+        for child in sorted(program_files.iterdir()):
             if child.is_dir() and child.name.startswith("UE_") and _is_unreal_linux_root(child):
                 candidates.append(child)
     return candidates
@@ -90,7 +122,7 @@ def discover_unreal_linux_roots() -> list[Path]:
 
 def discover_unreal_linux_archives() -> list[Path]:
     archives: list[Path] = []
-    for unreal_root in [PUBLIC_UNREAL_ROOT, *_configured_roots("FASTDIS_UNREAL_ROOTS")]:
+    for unreal_root in [unreal_public_root(), *_configured_roots("FASTDIS_UNREAL_ROOTS")]:
         public_linux_root = unreal_root / "engines" / "linux"
         if not public_linux_root.is_dir():
             continue
@@ -98,6 +130,49 @@ def discover_unreal_linux_archives() -> list[Path]:
             path for path in sorted(public_linux_root.iterdir()) if path.is_file() and path.suffix.lower() == ".zip"
         )
     return archives
+
+
+def discover_unreal_windows_editors() -> list[dict[str, object]]:
+    if platform.system().lower() != "windows":
+        return []
+    candidates: list[dict[str, object]] = []
+    roots = _unique_paths(
+        [
+            *public_engine_search_roots()["unreal"],
+            PROGRAM_FILES_EPIC_GAMES,
+        ]
+    )
+    # Prefer the render-capable editor binary for visual-proof lanes.
+    exe_names = ("UnrealEditor.exe", "UnrealEditor-Cmd.exe")
+
+    def _append(root: Path, executable: Path) -> None:
+        candidates.append(
+            {
+                "root": root,
+                "executable": executable,
+                "command": str(executable),
+            }
+        )
+
+    for base in roots:
+        if not base.is_dir():
+            continue
+        direct_engine = base / "Engine" / "Binaries" / "Win64"
+        for exe_name in exe_names:
+            exe = direct_engine / exe_name
+            if exe.is_file():
+                _append(base, exe)
+                break
+        for child in sorted(base.iterdir()):
+            if not child.is_dir() or not child.name.startswith("UE_"):
+                continue
+            engine_dir = child / "Engine" / "Binaries" / "Win64"
+            for exe_name in exe_names:
+                exe = engine_dir / exe_name
+                if exe.is_file():
+                    _append(child, exe)
+                    break
+    return candidates
 
 
 def discover_godot_public_roots() -> dict[str, list[Path]]:
@@ -154,6 +229,11 @@ def discover_godot_macos_versions() -> list[dict[str, object]]:
                 if executable.exists():
                     _append_row(platform_root, direct_match.group("version"), executable)
             for child in sorted(platform_root.iterdir()):
+                if child.is_file() and child.name.startswith("Godot"):
+                    match = GODOT_MACOS_VERSION_PATTERN.match(child.stem)
+                    if match:
+                        _append_row(child.parent, match.group("version"), child)
+                    continue
                 if not child.is_dir():
                     continue
                 if not child.name.endswith(".app"):
@@ -217,11 +297,22 @@ def _discover_godot_platform_versions(platform_name: str) -> list[dict[str, obje
 
 
 def public_engine_search_roots() -> dict[str, list[Path]]:
+    system = platform.system().lower()
+    if system == "darwin":
+        return {
+            "unreal": _unique_paths([PUBLIC_UNREAL_MAC_ROOT, *_configured_roots("FASTDIS_UNREAL_ROOTS")]),
+            "godot": _unique_paths([PUBLIC_GODOT_ROOT, *_configured_godot_roots(), *_macos_godot_roots()]),
+            "unity": _unique_paths([*MACOS_UNITY_ROOTS, *_configured_roots("FASTDIS_UNITY_ROOTS")]),
+        }
+    if system == "windows":
+        return {
+            "unreal": _unique_paths([unreal_public_root(), *_configured_roots("FASTDIS_UNREAL_ROOTS"), program_files_root("Epic Games")]),
+            "godot": _unique_paths([PUBLIC_GODOT_ROOT, *_configured_godot_roots()]),
+            "unity": _unique_paths([unity_public_root(), program_files_root("Unity", "Hub", "Editor")]),
+        }
     godot_roots = [PUBLIC_GODOT_ROOT, *_configured_godot_roots()]
-    if platform.system().lower() == "darwin":
-        godot_roots.extend(_macos_godot_roots())
     return {
-        "unreal": _unique_paths([PUBLIC_UNREAL_ROOT, *_configured_roots("FASTDIS_UNREAL_ROOTS"), PROGRAM_FILES_EPIC_GAMES]),
+        "unreal": _unique_paths([unreal_public_root(), *_configured_roots("FASTDIS_UNREAL_ROOTS")]),
         "godot": _unique_paths(godot_roots),
-        "unity": _unique_paths([PUBLIC_UNITY_ROOT, PROGRAM_FILES_UNITY]),
+        "unity": _unique_paths([unity_public_root(), *_configured_roots("FASTDIS_UNITY_ROOTS")]),
     }

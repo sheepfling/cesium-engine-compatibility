@@ -78,10 +78,22 @@ def next_proof_runs() -> list[dict[str, object]]:
             "surface": "Godot Windows Startup Health",
             "command": "cesium-godot-aggressive-launcher --native-target windows --max-versions 1",
             "capture_focus": [
+                "bootstrap section with isolated runtime and staged project dir",
+                "import_probe section before the health probe",
                 "startup_health section from the launcher packet",
                 "shader-cache bootstrap success or failure",
                 "extension registration before visual proof",
                 "early crash signature capture before screenshot work",
+            ],
+        },
+        {
+            "surface": "Godot Windows Import Probe",
+            "command": "cesium-godot-aggressive-launcher --native-target windows --max-versions 1 --diagnostic-crash-dumps",
+            "capture_focus": [
+                "isolated runtime copy",
+                "project import and cache warmup",
+                "crash-handler-off diagnostics when needed",
+                "failure evidence before visual proof",
             ],
         },
         {
@@ -148,15 +160,55 @@ def next_proof_runs() -> list[dict[str, object]]:
             ],
         },
         {
+            "surface": "Windows Visual Proof Bundle",
+            "command": "cesium-windows-visual-proof",
+            "capture_focus": [
+                "one packet for the Unreal, Unity, and Godot Windows proof commands",
+                "startup-health, normalization, and compare wiring",
+                "the final Windows bundle before real host execution",
+            ],
+        },
+        {
+            "surface": "Windows Visual Proof Run",
+            "command": "cesium-windows-visual-proof-run",
+            "capture_focus": [
+                "actual Unreal, Unity, and Godot launcher execution",
+                "normalized proxy-earth and Cesium-earth capture roots",
+                "the compare gate that proves the Windows lane is green",
+            ],
+        },
+        {
             "surface": "Unreal Visual Proof",
-            "command": "UnrealEditor-Cmd.exe CesiumVanillaExample.uproject -ExecCmds=\"Automation RunTests Cesium.VisualProof.Windows.ProxyEarth,Cesium.VisualProof.Windows.CesiumEarth\"",
+            "command": "UnrealEditor.exe CesiumVanillaExample.uproject -NoEOS -ExecCmds=\"Automation RunTests Cesium.VisualProof.Windows.ProxyEarth; Quit\"",
+            "manifest_path": "artifacts/reports/cesium_visual_proof/unreal/windows/x86_64/visual_proof_manifest.json",
+            "proof_runner": {
+                "type": "automation",
+                "windows_tests": [
+                    "Cesium.VisualProof.Windows.ProxyEarth",
+                    "Cesium.VisualProof.Windows.CesiumEarth",
+                ],
+                "raw_capture_root": "extensions/cesium/examples/unreal/CesiumVanillaExample/Saved/Screenshots/WindowsEditor",
+                "normalized_capture_root": "artifacts/reports/cesium_visual_proof/unreal/windows/x86_64",
+                "normalize_command": "cesium-visual-proof-normalize --engine unreal --source-root \"extensions/cesium/examples/unreal/CesiumVanillaExample/Saved/Screenshots/WindowsEditor\" --capture-root \"artifacts/reports/cesium_visual_proof/unreal/windows/x86_64\" --native-target windows --architecture x86_64",
+            },
             "capture_focus": [
                 "Cesium.VisualProof.Windows.ProxyEarth automation lane",
                 "Cesium.VisualProof.Windows.CesiumEarth automation lane",
                 "Saved/Screenshots/WindowsEditor capture output",
                 "cesium-visual-proof-normalize into artifacts/reports/cesium_visual_proof/unreal/windows/x86_64",
+                "manifest-backed proof root beside the normalized PNGs",
                 "canonical proxy-earth and cesium-earth camera poses",
                 "the Unreal Windows proof runner that now matches the other engines",
+            ],
+        },
+        {
+            "surface": "Unreal Visual Proof Report",
+            "command": "cesium-unreal-visual-proof",
+            "capture_focus": [
+                "commandable Unreal Windows visual-proof payload",
+                "raw screenshot root and normalized capture root",
+                "manifest-backed packet entry for the Unreal runner",
+                "upstream CesiumVisualProof.spec.cpp harness in external/cesium/cesium-unreal",
             ],
         },
         {

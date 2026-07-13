@@ -28,19 +28,16 @@ EDITOR_SPECS = {
         "slug": "win64.exe.zip",
         "platform": "windows.64",
         "install_suffix": "_win64.exe",
-        "default_root": Path(r"C:\Users\Public\Godot\engines\windows"),
     },
     "linux": {
         "slug": "linux.x86_64.zip",
         "platform": "linux.64",
         "install_suffix": "_linux.x86_64",
-        "default_root": Path(r"C:\Users\Public\Godot\engines\linux"),
     },
     "mac": {
         "slug": "macos.universal.zip",
         "platform": "macos.universal",
         "install_suffix": "_macos.universal.app",
-        "default_root": Path.home() / "Applications",
     },
 }
 
@@ -126,8 +123,10 @@ def build_template_download_url(godot_version: str, flavor: str | None = None) -
 
 
 def _default_editor_root(native_target: str) -> Path:
-    spec = EDITOR_SPECS[native_target]
-    return Path(spec["default_root"])
+    if native_target in {"windows", "linux"}:
+        public_root = engine_root_discovery.public_share_root()
+        return public_root / "Godot" / "engines" / native_target
+    return Path.home() / "Applications"
 
 
 def _default_template_root(release_tag: str) -> Path:

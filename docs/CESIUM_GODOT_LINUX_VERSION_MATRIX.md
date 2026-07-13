@@ -3,6 +3,9 @@
 This note captures the four public Godot Linux builds already present on this
 host and ties them to the repo-owned Godot evidence story.
 
+Use the cross-platform notebook and fork workpack as the canonical structure
+for the PR narrative.
+
 ## Current Linux Set
 
 | Version | Lane Role | Executable Root | Notes |
@@ -18,6 +21,8 @@ host and ties them to the repo-owned Godot evidence story.
 - use `4.6.3-stable` as backward-compatibility evidence
 - use `4.7.1-rc1` as release-candidate evidence
 - use `4.8-dev1` as forward-verification evidence
+- keep the exact checkout commit in the workpack when you need to defend a
+  Battle-Road route change
 
 ## Related Notes
 
@@ -41,3 +46,9 @@ docker run --rm -v "C:\Users\peanu\GIT\sheepfling\cesium-engine-compatibility:/w
 
 That succeeded and gives us a real Linux import/open proof for the 4.7-stable
 lane, separate from the Windows headless import proof.
+
+## PR Defense Rule
+
+Keep Linux and Windows notes aligned on the same source route and version
+anchors. The workpack should carry the exact host, branch, and commit details
+when the lane is moved or reused for PR evidence.

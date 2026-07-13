@@ -1,0 +1,8 @@
+# Godot editor/runtime state is per-machine and must stay out of the repo.
+.godot/
+addons/
+logs/
+build/
+.import/
+.mono/
+export/

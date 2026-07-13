@@ -15,8 +15,8 @@ from extensions.cesium.tools import (
     unreal_linux_docker,
     unreal_linux_lane,
 )
-from tools import bootstrap_local_dev, build_cesium_compatibility_packet, build_cesium_cross_platform_fix_notes, build_cesium_engine_matrix, build_cesium_execution_audit, build_cesium_planned_routes, godot_doctor, run_cesium_plugin_lanes
-from tools import build_unity_native_matrix
+from tools import bootstrap_local_dev, build_cesium_compatibility_packet, build_cesium_cross_platform_fix_notes, build_cesium_engine_matrix, build_cesium_execution_audit, build_cesium_host_inventory, build_cesium_planned_routes, godot_doctor, run_cesium_plugin_lanes
+from tools import build_godot_visual_proof, build_unity_native_matrix, build_unity_visual_proof, build_unreal_visual_proof, build_windows_visual_proof, run_windows_visual_proof
 
 
 COMMAND_MAIN = {
@@ -29,7 +29,13 @@ COMMAND_MAIN = {
     "godot-linux-docker": godot_linux_docker.main,
     "unity-linux-docker": unity_linux_docker.main,
     "engine-matrix": build_cesium_engine_matrix.main,
+    "host-inventory": build_cesium_host_inventory.main,
     "compatibility-packet": build_cesium_compatibility_packet.main,
+    "windows-visual-proof": build_windows_visual_proof.main,
+    "windows-visual-proof-run": run_windows_visual_proof.main,
+    "unity-visual-proof": build_unity_visual_proof.main,
+    "godot-visual-proof": build_godot_visual_proof.main,
+    "unreal-visual-proof": build_unreal_visual_proof.main,
     "cross-platform-fix-notes": build_cesium_cross_platform_fix_notes.main,
     "planned-routes": build_cesium_planned_routes.main,
     "plugin-lanes": run_cesium_plugin_lanes.main,
@@ -79,6 +85,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     engine_matrix.add_argument("--json-out", type=Path, default=None)
     engine_matrix.add_argument("--md-out", type=Path, default=None)
 
+    host_inventory = subparsers.add_parser("host-inventory", help="Inventory installed engines, platforms, architectures, and core apps")
+    host_inventory.add_argument("--godot-selector", default=None)
+    host_inventory.add_argument("--max-godot-matches", type=int, default=5)
+    host_inventory.add_argument("--json-out", type=Path, default=None)
+    host_inventory.add_argument("--md-out", type=Path, default=None)
+
     unity_native_matrix = subparsers.add_parser("unity-native-matrix", help="Build the Unity native target matrix report")
     unity_native_matrix.add_argument("--json-out", type=Path, default=None)
     unity_native_matrix.add_argument("--md-out", type=Path, default=None)
@@ -86,6 +98,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     compat_packet = subparsers.add_parser("compatibility-packet", help="Build the combined Cesium compatibility packet")
     compat_packet.add_argument("--json-out", type=Path, default=None)
     compat_packet.add_argument("--md-out", type=Path, default=None)
+
+    unreal_visual_proof = subparsers.add_parser("unreal-visual-proof", help="Build the Unreal Windows visual-proof report")
+    unreal_visual_proof.add_argument("--json-out", type=Path, default=None)
+    unreal_visual_proof.add_argument("--md-out", type=Path, default=None)
+
+    windows_visual_proof = subparsers.add_parser("windows-visual-proof", help="Build the unified Windows visual-proof packet")
+    windows_visual_proof.add_argument("--json-out", type=Path, default=None)
+    windows_visual_proof.add_argument("--md-out", type=Path, default=None)
+
+    windows_visual_proof_run = subparsers.add_parser("windows-visual-proof-run", help="Execute the Windows visual-proof lanes and compare the captures")
+    windows_visual_proof_run.add_argument("--json-out", type=Path, default=None)
+    windows_visual_proof_run.add_argument("--md-out", type=Path, default=None)
+    windows_visual_proof_run.add_argument("--log-dir", type=Path, default=None)
+    windows_visual_proof_run.add_argument("--timeout-seconds", type=float, default=None)
+    windows_visual_proof_run.add_argument("--unity-version", default=None)
+    windows_visual_proof_run.add_argument("--godot-selector", default=None)
+    windows_visual_proof_run.add_argument("--godot-max-versions", type=int, default=None)
+
+    unity_visual_proof = subparsers.add_parser("unity-visual-proof", help="Build the Unity Windows visual-proof report")
+    unity_visual_proof.add_argument("--json-out", type=Path, default=None)
+    unity_visual_proof.add_argument("--md-out", type=Path, default=None)
+
+    godot_visual_proof = subparsers.add_parser("godot-visual-proof", help="Build the Godot Windows visual-proof report")
+    godot_visual_proof.add_argument("--json-out", type=Path, default=None)
+    godot_visual_proof.add_argument("--md-out", type=Path, default=None)
 
     fix_notes = subparsers.add_parser("cross-platform-fix-notes", help="Build the reviewer-facing cross-platform fix notes")
     fix_notes.add_argument("--json-out", type=Path, default=None)
@@ -117,7 +154,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "godot-linux-docker",
         "unity-linux-docker",
         "engine-matrix",
+        "host-inventory",
         "compatibility-packet",
+        "windows-visual-proof",
+        "windows-visual-proof-run",
+        "unity-visual-proof",
+        "godot-visual-proof",
+        "unreal-visual-proof",
         "cross-platform-fix-notes",
         "planned-routes",
         "unity-native-matrix",
@@ -170,6 +213,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.md_out is not None:
             forwarded.extend(["--md-out", str(args.md_out)])
         return _run_command("engine-matrix", forwarded)
+    if args.command == "host-inventory":
+        forwarded: list[str] = []
+        if args.godot_selector is not None:
+            forwarded.extend(["--godot-selector", args.godot_selector])
+        if args.max_godot_matches is not None:
+            forwarded.extend(["--max-godot-matches", str(args.max_godot_matches)])
+        if args.json_out is not None:
+            forwarded.extend(["--json-out", str(args.json_out)])
+        if args.md_out is not None:
+            forwarded.extend(["--md-out", str(args.md_out)])
+        return _run_command("host-inventory", forwarded)
     if args.command == "unity-native-matrix":
         forwarded = []
         if args.json_out is not None:
@@ -184,6 +238,51 @@ def main(argv: list[str] | None = None) -> int:
         if args.md_out is not None:
             forwarded.extend(["--md-out", str(args.md_out)])
         return _run_command("compatibility-packet", forwarded)
+    if args.command == "windows-visual-proof":
+        forwarded: list[str] = []
+        if args.json_out is not None:
+            forwarded.extend(["--json-out", str(args.json_out)])
+        if args.md_out is not None:
+            forwarded.extend(["--md-out", str(args.md_out)])
+        return _run_command("windows-visual-proof", forwarded)
+    if args.command == "windows-visual-proof-run":
+        forwarded: list[str] = []
+        if args.json_out is not None:
+            forwarded.extend(["--json-out", str(args.json_out)])
+        if args.md_out is not None:
+            forwarded.extend(["--md-out", str(args.md_out)])
+        if args.log_dir is not None:
+            forwarded.extend(["--log-dir", str(args.log_dir)])
+        if args.timeout_seconds is not None:
+            forwarded.extend(["--timeout-seconds", str(args.timeout_seconds)])
+        if args.unity_version is not None:
+            forwarded.extend(["--unity-version", str(args.unity_version)])
+        if args.godot_selector is not None:
+            forwarded.extend(["--godot-selector", str(args.godot_selector)])
+        if args.godot_max_versions is not None:
+            forwarded.extend(["--godot-max-versions", str(args.godot_max_versions)])
+        return _run_command("windows-visual-proof-run", forwarded)
+    if args.command == "unity-visual-proof":
+        forwarded: list[str] = []
+        if args.json_out is not None:
+            forwarded.extend(["--json-out", str(args.json_out)])
+        if args.md_out is not None:
+            forwarded.extend(["--md-out", str(args.md_out)])
+        return _run_command("unity-visual-proof", forwarded)
+    if args.command == "godot-visual-proof":
+        forwarded: list[str] = []
+        if args.json_out is not None:
+            forwarded.extend(["--json-out", str(args.json_out)])
+        if args.md_out is not None:
+            forwarded.extend(["--md-out", str(args.md_out)])
+        return _run_command("godot-visual-proof", forwarded)
+    if args.command == "unreal-visual-proof":
+        forwarded: list[str] = []
+        if args.json_out is not None:
+            forwarded.extend(["--json-out", str(args.json_out)])
+        if args.md_out is not None:
+            forwarded.extend(["--md-out", str(args.md_out)])
+        return _run_command("unreal-visual-proof", forwarded)
     if args.command == "cross-platform-fix-notes":
         forwarded: list[str] = []
         if args.json_out is not None:

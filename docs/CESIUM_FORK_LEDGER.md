@@ -4,13 +4,16 @@ This note collects the Cesium-specific code changes and documentation trail that
 matter for upstream-facing forks and PRs.
 
 Use it as the branch-level index for the lane notes already captured elsewhere
-in the repo.
+in the repo. The canonical version-and-host structure now lives in
+[Cesium Compatibility Notebook](./CESIUM_COMPATIBILITY_NOTEBOOK.md).
 
 ## What Is Already Documented
 
+- [Cesium compatibility notebook](./CESIUM_COMPATIBILITY_NOTEBOOK.md)
 - [Cesium proof strategy](./CESIUM_PROOF_STRATEGY.md)
 - [Cesium source route](../extensions/cesium/docs/CESIUM_SOURCE_ROUTE.md)
 - [Cesium fork push plan](./research/CESIUM_FORK_PUSH_PLAN.md)
+- [Cesium fork workpack](./CESIUM_FORK_WORKPACK.md)
 - [Cesium example standard](../extensions/cesium/docs/CESIUM_EXAMPLE_STANDARD.md)
 - [Unreal version matrix](./UNREAL_VERSION_MATRIX.md)
 - [Unreal Linux notes](./CESIUM_UNREAL_LINUX_NOTES.md)
@@ -22,6 +25,7 @@ in the repo.
 - [Godot cross-platform notes](./CESIUM_GODOT_CROSS_PLATFORM_NOTES.md)
 - [Cesium engine matrix](./CESIUM_ENGINE_MATRIX.md)
 - [Cesium plugin lane runner](../tools/run_cesium_plugin_lanes.py)
+- [Cesium fork workpack command](../tools/build_cesium_fork_workpack.py)
 
 ## Code Changes By Lane
 
@@ -158,6 +162,7 @@ Recommended fork targets:
 
 The fork packets should preserve:
 
+- the Cesium workspace commit that the work was based on
 - exact engine version
 - host and toolchain
 - command used
@@ -177,6 +182,17 @@ Yes, we have clear notes for the next agent to pull and fork the right repo:
 
 This repo keeps the orchestration, matrix, and reporting changes.
 The vendor repos get the source-fix PRs.
+
+## Version Anchors
+
+The notes are now expected to cite these source anchors explicitly:
+
+- Cesium for Unreal: `2.28.0`
+- Cesium for Unity: `1.24.0`
+- Godot route: commit-tracked `Battle-Road-Labs/3D-Tiles-For-Godot`
+
+When the vendor version is semver-based, cite the package/version field.
+When it is commit-tracked, cite the checkout commit and branch in the workpack.
 
 ## Remaining Gap
 

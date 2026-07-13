@@ -11,6 +11,18 @@ That makes Cesium both:
 - an early-warning lane for upstream breakage that we can hand back quickly as
   focused fixes or evidence
 
+## Source Version Anchors
+
+Keep the source version explicit instead of burying it in prose:
+
+- Cesium for Unreal: `2.28.0` from
+  `external/cesium/cesium-unreal/CesiumForUnreal.uplugin`
+- Cesium for Unity: `1.24.0` from `external/cesium/cesium-unity/package.json`
+- Godot route: commit-tracked `Battle-Road-Labs/3D-Tiles-For-Godot`
+
+The Godot route is a community plugin, so the exact checkout commit and branch
+belong in the fork workpack rather than in a vague version label.
+
 ## Public Repositories
 
 Observed in the CesiumGS and Battle-Road-Labs GitHub organizations on
@@ -68,6 +80,7 @@ Current public Cesium Unreal plugin route:
 - working branch policy for source prep: `main`
 - Linux is a supported native target, but it gets its own host/toolchain notes
   in `docs/CESIUM_UNREAL_LINUX_NOTES.md`
+- current vendor version anchor: `2.28.0`
 
 Lane policy:
 
@@ -94,6 +107,7 @@ Current public Cesium Unity plugin route:
 - working branch policy for source prep: `main`
 - current proof lane: `6000.5.0f1`
 - repo-owned example project version file: `6000.6.0b2`
+- current package version anchor: `1.24.0`
 
 Lane policy:
 
@@ -112,6 +126,7 @@ Current public Godot Cesium-style route:
 - source plugin repo: `Battle-Road-Labs/3D-Tiles-For-Godot`
 - working branch policy for source prep: `master`
 - current repo pin: `4.7`
+- versioning model: commit-tracked checkout, not a semver package
 
 Important boundary:
 
@@ -183,6 +198,8 @@ fork without rewriting the workflow:
 
 The first macOS-focused notes now live in
 [Cesium macOS Silicon Build Notes](CESIUM_MACOS_SILICON_BUILD_NOTES.md).
+Use that note when the macOS lane needs the Apple Silicon versus Intel split
+spelled out in one place.
 
 In other words, the current public checkouts are the staging area, and your
 eventual Cesium forks should slide into those same roots without requiring a

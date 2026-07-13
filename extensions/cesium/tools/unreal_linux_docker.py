@@ -28,26 +28,13 @@ from extensions.cesium.tools import linux_docker_runner as docker_runner
 DEFAULT_IMAGE = "cesium-linux-proof:ubuntu24.04"
 DEFAULT_PLATFORM = "linux/amd64"
 DEFAULT_PROFILE = ROOT / "tools" / "unreal_linux_profiles" / "ubuntu_24_04_ue58.env"
-DEFAULT_STAGE_ROOT = Path(r"C:\tmp") / "cesium_unreal_linux"
+DEFAULT_STAGE_ROOT = Path(tempfile.gettempdir()) / "cesium_unreal_linux"
 DEFAULT_DOCKER_LOG_DIR = ROOT / "artifacts" / "reports" / "unreal_linux_docker"
 DEFAULT_PRESERVE_ROOT = ROOT / "artifacts" / "preserved"
 DEFAULT_CONTAINER_NAME_PREFIX = "cesium-unreal-linux-proof"
 LANE_SCRIPT = "extensions/cesium/tools/unreal_linux_lane.py"
 ARCHIVE_VERSION_PATTERN = re.compile(r"Linux_Unreal_Engine_(\d+\.\d+(?:\.\d+)?)", re.IGNORECASE)
 PLATFORM_SUPPORT_SOURCE = "/linux-platform-support"
-PACKET_STOAT_PLUGIN_ROOT = (
-    ROOT.parent
-    / "Packet-Stoat"
-    / "build"
-    / "unreal_vendor_plugins"
-    / "cesium"
-    / "linux_docker_5_8"
-    / "CesiumForUnreal"
-)
-PLATFORM_SUPPORT_SEARCH_ROOTS = (
-    Path(r"C:\Users\Public\Unreal") / "Engine" / "Platforms" / "Linux",
-    Path(r"C:\Program Files\Epic Games") / "Engine" / "Platforms" / "Linux",
-)
 DEFAULT_PLUGIN_ROOT = ROOT / "external" / "cesium" / "cesium-unreal"
 
 
@@ -129,6 +116,20 @@ def _extract_archive_version(archive: Path) -> str | None:
     if match is not None:
         return match.group(1)
     return None
+
+
+def _platform_support_search_roots() -> list[Path]:
+    roots: list[Path] = []
+    for unreal_root in public_engine_search_roots()["unreal"]:
+        candidate = unreal_root / "Engine" / "Platforms" / "Linux"
+        if candidate not in roots:
+            roots.append(candidate)
+    return roots
+
+
+def _public_unreal_root_hint() -> str:
+    roots = public_engine_search_roots()["unreal"]
+    return str(roots[0]) if roots else "public Unreal search roots"
 
 
 def _docker_base_args(image: str) -> list[str]:
@@ -416,13 +417,13 @@ def _resolve_ue_root_with_source(
     archive = _select_unreal_linux_archive(engine_version)
     if archive is None:
         return None, "no root or archive discovered", None
-    return None, "staged zip from C:\\Users\\Public\\Unreal", archive
+    return None, f"staged zip from {_public_unreal_root_hint()}", archive
 
 
 def _resolve_linux_platform_support_root(explicit_root: Path | None) -> Path | None:
     if explicit_root is not None:
         return explicit_root
-    for candidate in PLATFORM_SUPPORT_SEARCH_ROOTS:
+    for candidate in _platform_support_search_roots():
         if candidate.is_dir():
             return candidate
     return None
@@ -430,7 +431,7 @@ def _resolve_linux_platform_support_root(explicit_root: Path | None) -> Path | N
 
 def _discovered_support_context() -> dict[str, list[Path]]:
     return {
-        "search_roots": [candidate for candidate in PLATFORM_SUPPORT_SEARCH_ROOTS],
+        "search_roots": [candidate for candidate in _platform_support_search_roots()],
         "discovered_roots": _discover_linux_platform_support_roots(),
         "public_archives": discover_unreal_linux_archives(),
     }
@@ -448,7 +449,6 @@ def _resolve_plugin_root(explicit_root: Path | None = None) -> Path:
     if env_override:
         candidates.append(Path(env_override).expanduser())
     candidates.append(DEFAULT_PLUGIN_ROOT)
-    candidates.append(PACKET_STOAT_PLUGIN_ROOT)
     for candidate in candidates:
         if candidate.is_dir() and _plugin_root_has_third_party_include(candidate):
             return candidate.resolve()
@@ -459,7 +459,7 @@ def _resolve_plugin_root(explicit_root: Path | None = None) -> Path:
 
 
 def _discover_linux_platform_support_roots() -> list[Path]:
-    return [candidate for candidate in PLATFORM_SUPPORT_SEARCH_ROOTS if candidate.is_dir()]
+    return [candidate for candidate in _platform_support_search_roots() if candidate.is_dir()]
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -524,7 +524,7 @@ def _print_build_plan(engine_version: str | None, *, image: str = DEFAULT_IMAGE)
     for root in public_engine_search_roots()["unreal"]:
         print(f"  - {root}")
     print("linux platform support search roots:")
-    for root in PLATFORM_SUPPORT_SEARCH_ROOTS:
+    for root in _platform_support_search_roots():
         print(f"  - {root}")
     archives = discover_unreal_linux_archives()
     if archives:
@@ -535,7 +535,7 @@ def _print_build_plan(engine_version: str | None, *, image: str = DEFAULT_IMAGE)
     print("source options:")
     print("  - manual --ue-root")
     print("  - existing discovered root")
-    print("  - staged zip from C:\\Users\\Public\\Unreal")
+    print(f"  - staged zip from {_public_unreal_root_hint()}")
     print(f"plugin root default: {DEFAULT_PLUGIN_ROOT}")
     print("follow-up: mount a Linux Unreal Engine root into the container or let the lane stage a public zip, then run the same lane against the real engine toolchain before treating the build as green.")
 
@@ -564,7 +564,7 @@ def _print_build_request(
     for root in public_engine_search_roots()["unreal"]:
         print(f"  - {root}")
     print("linux platform support search roots:")
-    for root in PLATFORM_SUPPORT_SEARCH_ROOTS:
+    for root in _platform_support_search_roots():
         print(f"  - {root}")
     archives = discover_unreal_linux_archives()
     if archives:
@@ -649,7 +649,7 @@ def main(argv: list[str] | None = None) -> int:
             if not _archive_has_linux_platform_support(archive) and linux_platform_support_root is None:
                 _print_build_request(
                     args.engine_version,
-                    Path(r"C:\Users\Public\Unreal"),
+                    Path(_public_unreal_root_hint()),
                     image=image,
                     archive=archive,
                     linux_platform_support_root=linux_platform_support_root,
@@ -728,7 +728,7 @@ def main(argv: list[str] | None = None) -> int:
         if resolved_ue_root is None or not _has_linux_build_prereqs(resolved_ue_root):
             if archive is not None:
                 if not _archive_has_linux_platform_support_tree(archive) and linux_platform_support_root is None:
-                    _print_build_request(args.engine_version, Path(r"C:\Users\Public\Unreal"), image=image, archive=archive)
+                    _print_build_request(args.engine_version, Path(_public_unreal_root_hint()), image=image, archive=archive)
                     print(f"selected source: {source}")
                     print("blocker: the public Unreal Linux archive does not include Engine/Config/Linux platform-support files")
                     return 2
@@ -756,7 +756,7 @@ def main(argv: list[str] | None = None) -> int:
                     preserve_root=args.preserve_root.expanduser().resolve(),
                 )
             if resolved_ue_root is None:
-                resolved_ue_root = args.ue_root if args.ue_root is not None else Path(r"C:\Users\Public\Unreal")
+                resolved_ue_root = args.ue_root if args.ue_root is not None else Path(_public_unreal_root_hint())
             _print_build_request(
                 args.engine_version,
                 resolved_ue_root,

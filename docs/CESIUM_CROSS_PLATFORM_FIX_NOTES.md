@@ -8,6 +8,7 @@
 - This note turns the current matrix, audit, and planned-routes packets into a reviewer-facing checklist.
 - The table is meant to be evidence-driven, not a substitute for live build proof.
 - Unreal Windows coverage exists for `5.7` and `5.8`.
+- Unreal Windows visual proof now has an explicit runner entry that names the `Cesium.VisualProof.Windows.ProxyEarth` and `Cesium.VisualProof.Windows.CesiumEarth` automation tests and the normalized `Saved/Screenshots/WindowsEditor` root.
 - The overall goal spans Unreal, Unity, and Godot across Windows, Linux native or Docker proxy, and macOS on both Intel `x86_64` and Apple Silicon `arm64` where supported.
 - Planned macOS and Unity Linux/Docker work remains explicit rather than folded into the verified lanes.
 - The note is intentionally aligned to the current packet state so it can be regenerated from the same evidence.

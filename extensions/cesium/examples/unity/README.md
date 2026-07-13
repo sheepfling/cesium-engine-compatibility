@@ -15,3 +15,6 @@ Target bar:
 - one canonical geospatial scene
 - one pure-Cesium scene proof with no FastDIS dependency
 - one rerunnable demo/report lane
+
+If this lane needs a version-specific project variant, keep it in a separate
+project root and follow [`docs/CESIUM_PROJECT_SEGREGATION.md`](../../../../docs/CESIUM_PROJECT_SEGREGATION.md).

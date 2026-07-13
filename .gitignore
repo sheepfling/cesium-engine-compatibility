@@ -4,3 +4,10 @@ __pycache__/
 build/
 artifacts/
 external/cesium/
+!external/cesium/cesium-unity/
+!external/cesium/cesium-unity/Reinterop.dll.meta
+/Unity/
+dist/
+tmp/
+.tmp/
+*.egg-info/

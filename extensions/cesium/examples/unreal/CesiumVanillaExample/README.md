@@ -21,7 +21,33 @@ The target bar is:
 - keep the project free of FastDIS dependencies
 - produce a rerunnable demo and proof lane
 
+Generated editor/runtime state stays out of the repo under `Binaries/`,
+`Build/`, `DerivedDataCache/`, `Intermediate/`, `Saved/`, and `.vs/`.
+If we need a version-specific Unreal variant, keep it in a separate project
+workpack or lane report rather than folding it into this base scaffold.
+
+The Windows proof lane is expected to normalize `Saved/Screenshots/WindowsEditor`
+into `artifacts/reports/cesium_visual_proof/unreal/windows/x86_64/` and write
+`visual_proof_manifest.json` beside the normalized PNGs.
+
+The lane contract is also checked in as
+[`VisualProofContract.md`](./VisualProofContract.md) so the output shape stays
+easy to review next to the example project itself.
+
+Version and lane markers:
+
+- Unreal 5.7 is the current baseline Windows lane.
+- Unreal 5.8 is the forward-verification lane.
+- Linux stays a separate Docker-backed proof lane.
+- The sample should stay segmented by lane in staging and reporting even
+  though it remains a single repo-owned example tree.
+- If Unreal needs a version-specific variant, put it in a separate project
+  root and keep the base scaffold untouched.
+
 Linux proof is tracked separately in `docs/CESIUM_UNREAL_LINUX_NOTES.md`.
+
+See [`docs/CESIUM_PROJECT_SEGREGATION.md`](../../../../../docs/CESIUM_PROJECT_SEGREGATION.md)
+for the repo-wide split rule.
 
 ## Current State
 

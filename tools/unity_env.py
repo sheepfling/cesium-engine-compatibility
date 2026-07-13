@@ -9,12 +9,12 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import subprocess
 import tempfile
+import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_UNITY_ROOT = Path(r"C:\Users\Public\Unity")
-PROGRAM_FILES_UNITY = Path(r"C:\Program Files\Unity\Hub\Editor")
 UNITY_CHANNEL_RANK = {
     "p": 4,
     "f": 3,
@@ -172,8 +172,9 @@ def _platform_roots() -> list[Path]:
     if system == "darwin":
         return [Path("/Applications/Unity/Hub/Editor"), Path.home() / "Applications" / "Unity" / "Hub" / "Editor"]
     if system == "windows":
-        return [PUBLIC_UNITY_ROOT, Path("C:/Program Files/Unity/Hub/Editor"), Path("D:/Unity/Hub/Editor")]
-    return [PUBLIC_UNITY_ROOT, Path.home() / "Unity" / "Hub" / "Editor", Path("/opt/Unity/Hub/Editor")]
+        program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        return [Path(os.environ.get("PUBLIC", r"C:\Users\Public")) / "Unity", program_files / "Unity" / "Hub" / "Editor"]
+    return [Path(os.environ.get("PUBLIC", str(Path.home() / "Public"))) / "Unity", Path.home() / "Unity" / "Hub" / "Editor", Path("/opt/Unity/Hub/Editor")]
 
 
 def configured_roots() -> list[Path]:
@@ -186,6 +187,140 @@ def default_scan_roots() -> list[Path]:
 
 def scan_roots() -> list[Path]:
     return configured_roots() + default_scan_roots()
+
+
+def unity_hub_candidates() -> list[Path]:
+    """Return likely Unity Hub desktop executables without requiring Hub on PATH."""
+    if platform.system().lower() != "windows":
+        return []
+    program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+    local_appdata = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
+    public_root = Path(os.environ.get("PUBLIC", r"C:\Users\Public"))
+    candidates = [
+        Path(os.environ.get("UNITY_HUB_PATH", "")),
+        program_files / "Unity Hub" / "Unity Hub.exe",
+        local_appdata / "Programs" / "Unity Hub" / "Unity Hub.exe",
+        public_root / "Unity Hub" / "Unity Hub.exe",
+    ]
+    result: list[Path] = []
+    for candidate in candidates:
+        if str(candidate) and candidate.is_file() and candidate not in result:
+            result.append(candidate.resolve())
+    return result
+
+
+def _license_status(output: str, exit_code: int | None) -> tuple[str, list[str]]:
+    lowered = output.lower()
+    blocked_markers = (
+        "no valid unity editor license",
+        "no valid license",
+        "license is not active",
+        "unable to activate unity",
+        "serial number is not valid",
+        "headless entitlement was unavailable",
+    )
+    available_markers = (
+        "license type: personal",
+        "license type: professional",
+        "license type: plus",
+        "license successfully returned",
+        "licensed to",
+        "product: unity personal",
+        "successfully updated license",
+    )
+    blocked = [marker for marker in blocked_markers if marker in lowered]
+    available = [marker for marker in available_markers if marker in lowered]
+    if blocked:
+        return "blocked", blocked
+    # Unity can prove licensing before returning non-zero for later project
+    # compilation errors. Keep license readiness independent from build health.
+    if available:
+        return "available", available
+    return "unknown", []
+
+
+def probe_unity_license(
+    install: UnityInstall | None,
+    *,
+    project_dir: Path | None = None,
+    log_path: Path | None = None,
+    timeout_seconds: float = 30.0,
+) -> dict[str, object]:
+    """Run a short, non-destructive Unity probe and classify license readiness."""
+    if install is None or not install.editor_path:
+        return {"status": "missing-editor", "command": None, "exit_code": None, "signals": []}
+    if platform.system().lower() != "windows":
+        return {"status": "not-run", "reason": "Unity desktop licensing probe is currently Windows-specific."}
+    destination = (log_path or work_root() / "unity_license_probe.log").expanduser()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    command = [str(install.editor_path), "-batchmode", "-nographics", "-quit", "-logFile", str(destination)]
+    if project_dir is not None:
+        command.extend(["-projectPath", str(project_dir)])
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(project_dir) if project_dir else None,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        output = "\n".join((completed.stdout or "", completed.stderr or ""))
+        if destination.is_file():
+            output += "\n" + destination.read_text(encoding="utf-8", errors="replace")
+        status, signals = _license_status(output, completed.returncode)
+        return {
+            "status": status,
+            "command": command,
+            "exit_code": completed.returncode,
+            "signals": signals,
+            "log_path": str(destination),
+        }
+    except subprocess.TimeoutExpired:
+        return {"status": "timeout", "command": command, "exit_code": None, "signals": ["license probe timed out"], "log_path": str(destination)}
+    except OSError as exc:
+        return {"status": "error", "command": command, "exit_code": None, "signals": [str(exc)], "log_path": str(destination)}
+
+
+def ensure_unity_hub_open(*, settle_seconds: float = 8.0) -> dict[str, object]:
+    """Open Unity Hub visibly and leave it running for interactive activation."""
+    candidates = unity_hub_candidates()
+    if not candidates:
+        return {"status": "missing", "executable": None, "settled": False, "candidates": []}
+    executable = candidates[0]
+    creationflags = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    try:
+        process = subprocess.Popen([str(executable)], cwd=str(executable.parent), creationflags=creationflags)
+        deadline = time.monotonic() + max(0.0, settle_seconds)
+        while time.monotonic() < deadline and process.poll() is None:
+            time.sleep(0.25)
+        process_alive = process.poll() is None
+        attached_existing = False
+        if not process_alive:
+            try:
+                tasklist = subprocess.run(
+                    ["tasklist", "/FI", "IMAGENAME eq Unity Hub.exe"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5.0,
+                    check=False,
+                )
+                attached_existing = "Unity Hub.exe" in (tasklist.stdout or "")
+            except (OSError, subprocess.TimeoutExpired):
+                attached_existing = False
+        settled = process_alive or attached_existing
+        return {
+            "status": "opened" if process_alive else ("attached" if attached_existing else "exited"),
+            "executable": str(executable),
+            "pid": process.pid,
+            "settled": settled,
+            "candidates": [str(path) for path in candidates],
+            "settle_seconds": settle_seconds,
+            "left_running": settled,
+            "attached_existing": attached_existing,
+        }
+    except OSError as exc:
+        return {"status": "error", "executable": str(executable), "settled": False, "candidates": [str(path) for path in candidates], "error": str(exc)}
 
 
 def _version_from_root(root: Path) -> str:

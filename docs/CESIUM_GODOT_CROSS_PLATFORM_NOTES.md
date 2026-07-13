@@ -1,133 +1,80 @@
 # Cesium Godot Cross-Platform Notes
 
-This note tracks the repo-owned Godot native lane across Windows, Linux, and
-macOS.
+This note is the cross-platform Godot companion to the fork workpack.
 
-The macOS target is intentionally split into Intel `x86_64` and Apple Silicon
-`arm64` when we get a real host proof run, because those are separate
-compatibility surfaces even when the editor version matches.
+Use it when you need one place to answer:
 
-The goal is to keep the current Windows baseline honest while making room for
-separate Linux and macOS native proof lanes that share the same source route
-but not the same host assumptions.
+1. what source route the Godot work comes from
+2. what host and architecture are being proven
+3. which versions are compatibility evidence versus current baseline
+4. what still needs to go green before the Godot PR is defendable
 
-## Current Lane Shape
+## Source Route
 
 - source route: `Battle-Road-Labs/3D-Tiles-For-Godot`
-- pinned editor family: `4.7`
-- current baseline target: `windows`
-- expansion targets: `linux`, `mac`
+- versioning model: commit-tracked checkout, not a semver package
+- current branch policy: `master`
 - public engine discovery prefers `C:\Users\Public\Godot`
+
+The exact checkout commit belongs in the fork workpack, not in a vague version
+label. That keeps the community-route story honest.
+
+## Source Version Anchors
+
+| Surface | Version Anchor | Notes |
+| --- | --- | --- |
+| Windows | `4.7-stable` | Current pinned baseline for the repo-owned Godot lane. |
+| Linux | `4.7-stable` | Current pinned Linux baseline for the repo-owned Godot lane. |
+| Backward evidence | `4.6.3-stable` | Useful compatibility evidence for both Windows and Linux. |
+| Forward evidence | `4.7.1-rc1`, `4.8-dev1` | Useful for detecting release drift before it reaches the baseline. |
+
+## Host Matrix
+
+| Host | Architecture | Status | Notes |
+| --- | --- | --- | --- |
+| Windows | `x86_64` | verified | Baseline import/open proof and the four-version discovery set are both present. |
+| Linux | `x86_64` | verified | Docker-backed proof is available and the same four-version discovery set is visible. |
+| macOS | `x86_64` | planned | Keep Intel separate from Apple Silicon when we get a real host proof. |
+| macOS | `arm64` | planned | Track Apple Silicon separately so the packet can defend both Mac architectures. |
 
 ## Current Contract
 
-The shared Cesium example workflow already tracks the Godot route as a
-first-class example lane. What changes per host is the compatibility framing:
+The repo-owned Godot example workflow already treats the lane as a first-class
+workflow surface. What changes per host is the compatibility framing:
 
 - Windows: baseline import/open and renderer proof
-- Linux: separate native import/open proof
-- macOS: separate native import/open proof
+- Linux: separate native import/open proof, with Docker as the repeatable proxy
+- macOS: separate native import/open proof, split by Intel and Apple Silicon
 
-The live Godot report lanes have now been exercised locally for the Windows
-and Linux native targets, while macOS remains the next live proof gap:
+The commandable routes now stay visible in the packet set:
 
 - `cesium-example report --engine godot --native-target windows`
 - `cesium-example report --engine godot --native-target linux`
 - `cesium-example report --engine godot --native-target mac`
+- `cesium-plugin-lanes --dry-run --lanes godot-host-mac`
 
-The macOS route is also commandable in the lane bundle as
-`cesium-plugin-lanes --dry-run --lanes godot-host-mac`, which keeps the future
-proof path visible alongside the Windows and Linux lanes.
+## Evidence
 
-## macOS Packet Shape
+### Windows
 
-When the real macOS lane lands, the packet should keep the same shape as the
-Windows and Linux lanes:
+- the local Windows editor can headlessly import the repo-owned example project
+- the Windows public discovery tree recognizes the four public builds
+- build notes live in [Godot Windows 4.7 build notes](./CESIUM_GODOT_WINDOWS_4_7_BUILD_NOTES.md)
+- the version matrix lives in [Godot Windows version matrix](./CESIUM_GODOT_WINDOWS_VERSION_MATRIX.md)
 
-- report name: `godot-mac`
-- command bundle: `cesium-plugin-lanes --dry-run --lanes godot-host-mac`
-- capture focus: editor version, host architecture, addon revision, and the
-  specific import/open or build proof message
-- artifact family: `artifacts/reports/cesium_examples/`
+### Linux
 
-That keeps the pending route explicit while still matching the report style we
-already use for the Windows and Linux native lanes.
+- the local Linux editor can headlessly import the repo-owned example project in Docker
+- the Linux public discovery tree recognizes the same four-version set
+- the Docker proof lane is a real proof lane, not just a discovery placeholder
+- the version matrix lives in [Godot Linux version matrix](./CESIUM_GODOT_LINUX_VERSION_MATRIX.md)
 
-The local Godot editor also proved it can open the repo-owned example project in
-headless import mode on Windows:
+### macOS
 
-```bash
-"C:\Users\Public\Godot\engines\windows\Godot_v4.7-stable_win64.exe\Godot_v4.7-stable_win64.exe" --headless --path "C:\Users\peanu\GIT\sheepfling\cesium-engine-compatibility\extensions\cesium\examples\godot\CesiumVanillaExample" --import --quit
-```
-
-That smoke completed successfully and is not a full export/build proof yet, but
-it does exercise the actual repo-owned project path rather than just the
-version discovery layer.
-
-The Linux editor also proved it can open the repo-owned example project inside
-Docker with the same headless import flow, so the Linux native lane is now a
-real proof lane rather than a discovery-only placeholder.
-
-The repo-local Godot Linux Docker lane now passes from this checkout, which
-means the Docker path is runnable without depending on a preinstalled wrapper on
-`PATH`.
-
-The repo now also carries explicit export/build scaffolding for the pinned
-Godot lane:
-
-- `extensions/cesium/examples/godot/CesiumVanillaExample/export_presets.cfg`
-- `cesium-godot-example-build --build-target windows --godot-version 4.7`
-- `cesium-godot-linux-docker --mode build --build-target linux --godot-version 4.7`
-
-Those commands are not proof-green yet, but they make the Windows export and
-Linux Docker export paths part of the same repo-owned workflow shape as the
-report lanes.
-
-The local discovery helper now recognizes the public `win64.exe` and
-`linux.x86_64` Godot install layout, so the host audit can see the full four
-version set on both Windows and Linux. It also accepts a configured install
-root directly when that path is already the version directory, which keeps the
-Docker mount path closer to the actual editor layout.
-
-That means a hand-mounted Godot install can be discovered either as the parent
-engine root or as the version directory itself, without losing the lane shape.
-
-Each platform should keep its own failure notes, even though all three reuse the
-same source-route checkout and example scaffold.
-
-## macOS Proof Checklist
-
-The macOS lane is still planned, but it should use the same evidence shape as
-the Windows and Linux lanes once a host is available.
-
-Use the installed version spread as the compatibility anchor:
-
-- `4.6.3-stable` as compatibility evidence
-- `4.7-stable` as the current baseline
-- `4.7.1-rc1` as release-candidate evidence
-- `4.8-dev1` as forward verification
-
-The planned route is:
-
-```bash
-cesium-plugin-lanes --dry-run --lanes godot-host-mac
-```
-
-When we exercise it for real, capture the following in the packet:
-
-- exact Godot editor version
-- host OS and architecture
-- addon revision or checkout commit
-- target being exercised
-- command used
-- log tail or failure message
-- whether the issue is import-time, editor-open, renderer, export, or scene/runtime related
-
-When generating reports, use host-specific filenames:
-
-- `godot-windows`
-- `godot-linux`
-- `godot-mac`
+- macOS remains planned
+- macOS should be split into Intel `x86_64` and Apple Silicon `arm64`
+- the planned route stays commandable through the lane bundle
+- the macOS notes should preserve the same evidence shape when the first real host proof lands
 
 ## Public Search Roots
 
@@ -136,28 +83,47 @@ Search these first when looking for local Godot editor installs:
 - `C:\Users\Public\Godot\engines\windows`
 - `C:\Users\Public\Godot\engines\linux`
 
-The Windows tree uses directories like `Godot_v4.7-stable_win64.exe`, and the
-Linux tree uses directories like `Godot_v4.7-stable_linux.x86_64`.
+The discovery helper already understands the public `win64.exe` and
+`linux.x86_64` layouts, so the host audit can see the full Windows and Linux
+version sets.
 
-Add a macOS equivalent once a real macOS lane lands.
+## Open Gaps
 
-The Linux evidence matrix is tracked separately in
-`docs/CESIUM_GODOT_LINUX_VERSION_MATRIX.md`.
+- macOS native import/open or build proof
+- separate Intel and Apple Silicon macOS evidence
+- any extra addon or scene drift that only shows up on the Mac route
+- Windows GDExtension load crash when the Cesium descriptor is loaded from the
+  scene script on the current host
 
-## Evidence To Capture
+## Minimal Repro
 
-When a live lane fails or succeeds, record:
+The current Windows crash reduces to a very small repro:
 
-- exact Godot editor version
-- host OS and architecture
-- addon revision or checkout commit
-- command used
-- log tail or failure message
-- whether the issue is import-time, editor-open, renderer, export, or scene/runtime related
+1. create a clean Godot project with a `Node3D` proof scene
+2. add the Cesium addon folder under `addons/cesium_godot`
+3. call `load("res://addons/cesium_godot/Godot3DTiles.gdextension")` from
+   `_ready()`
+4. the editor hard-crashes on Windows across `4.6.3-stable`, `4.7-stable`,
+   `4.7.1-rc1`, and `4.8-dev1`
+
+That makes the current blocker a GDExtension-load compatibility failure, not
+just a bad scene layout or a missing user cache.
+
+## PR Defense Notes
+
+When you write the Godot PR narrative, keep these sentences true:
+
+- the route is community-maintained and commit-tracked
+- Windows and Linux are proven as separate host lanes
+- macOS is still planned, not implied green
+- Intel and Apple Silicon remain separate proof lanes on macOS
+- the workpack is the place where the exact checkout commit and branch live
+- the Windows blocker is a reproducible GDExtension load crash, so the proof
+  notes should name the exact descriptor-load line and the versions tested
 
 ## Next Step
 
-The next useful step is to add one native smoke per host:
+The next useful step is still one native smoke per host:
 
 1. Windows import/open smoke
 2. Linux import/open smoke

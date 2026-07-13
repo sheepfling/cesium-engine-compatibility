@@ -88,3 +88,20 @@ cesium-godot-doctor
 These doctor lanes are planning/quality gates over real repo-owned pure-Cesium example
 project scaffolds. They still need live runtime automation to become full proof
 lanes.
+
+## Segregation Rule
+
+If a lane needs a version-specific project variant, do not patch the base
+example scaffold in place.
+
+Create a separate project root, keep the generated state ignored there too, and
+record the split in [`docs/CESIUM_PROJECT_SEGREGATION.md`](../../../docs/CESIUM_PROJECT_SEGREGATION.md).
+
+When you mark a project as version-specific, keep the descriptor and proof
+harness files tracked in that versioned root and keep the machine output ignored
+there:
+
+- Unreal: `.uproject`, `Config/*.ini`, and `Source/*Target.cs`
+- Unity: `ProjectSettings/ProjectVersion.txt`, `ProjectSettings/*.asset`, and
+  `Assets/Editor/*.cs`
+- Godot: `project.godot`, `export_presets.cfg`, and `scenes/` and `scripts/`

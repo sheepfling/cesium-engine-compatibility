@@ -127,6 +127,12 @@ def _matrix_evidence() -> list[dict[str, object]]:
             "exists": (ROOT / "docs" / "CESIUM_UNREAL_LINUX_NOTES.md").is_file(),
         },
         {
+            "surface": "unreal-macos",
+            "kind": "macos_silicon_notes",
+            "path": "docs/CESIUM_MACOS_SILICON_BUILD_NOTES.md",
+            "exists": (ROOT / "docs" / "CESIUM_MACOS_SILICON_BUILD_NOTES.md").is_file(),
+        },
+        {
             "surface": "unity-windows",
             "kind": "version_matrix",
             "path": "docs/CESIUM_UNITY_VERSION_MATRIX.md",
@@ -293,6 +299,7 @@ def build_payload() -> dict[str, object]:
             "next_proof_runs": proof_runs.next_proof_runs(),
             "version_coverage": {
                 "unreal": [row["version"] for row in _matrix_rows(unreal.get("compatibility_tracking"))],
+                "unreal_lane_split": ["5.7 baseline", "5.8 forward verification"],
                 "unity": [row["version"] for row in _matrix_rows(unity.get("compatibility_tracking"))],
                 "unity_proof_lane": [str(unity.get("compatibility_tracking", {}).get("pinned_editor") or "")],
                 "unity_example_project_version": [
@@ -310,6 +317,10 @@ def build_payload() -> dict[str, object]:
                 "godot_linux": [row["version"] for row in _matrix_rows(godot_linux.get("compatibility_tracking"))],
                 "godot_mac_planned": ["cesium-plugin-lanes --dry-run --lanes godot-host-mac"],
                 "unreal_linux": [row["engine_version"] for row in _matrix_rows(unreal_linux)],
+                "unreal_linux_lane_split": [
+                    f"{unreal_linux.get('lane_split', {}).get('baseline_version', '5.7')} baseline",
+                    f"{unreal_linux.get('lane_split', {}).get('forward_version', '5.8')} forward verification",
+                ],
             },
         },
     }

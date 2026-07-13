@@ -70,6 +70,26 @@ platforms, and core toolchain apps into one packet. Add `--godot-selector` and
 `--max-godot-matches` when you want the Godot section filtered down to a
 smaller runway.
 
+If you want the standard per-fork compatibility workpack, run:
+
+```bash
+cesium-fork-workpack
+```
+
+That packet keeps the exact Cesium workspace revision, source-route checkout
+state, and per-engine/per-host green checklist together in one place.
+
+If you want the screenshot-proof plan for the example projects, run:
+
+```bash
+cesium-visual-proof
+```
+
+That packet records the canonical camera poses and output locations for the
+Unreal, Unity, and Godot example projects so a future capture harness can emit
+consistent screenshots. The Windows-first run order is documented in
+`docs/CESIUM_VISUAL_PROOF_PLAN.md`.
+
 If you want the remaining cross-platform bootstrap inventory instead, run:
 
 ```bash
