@@ -101,8 +101,22 @@ For any Linux proof run, record:
 
 ## Next Step
 
-The next meaningful step is to keep the Windows, Linux, and Linux Docker
-evidence aligned with the remaining live Unity and Godot host lanes.
+The Linux visual-proof lane has now reached Unreal runtime startup, but it is
+not green on this Docker host. Unreal 5.8 requires a Vulkan device satisfying
+the `VP_UE_Vulkan_SM5` profile; the container exposes Mesa llvmpipe, which is
+rejected by that profile. Unreal 5.8 also reports that desktop OpenGL is no
+longer supported, so `-opengl` is not a valid fallback.
+
+The current runtime logs are:
+
+- `artifacts/reports/unreal_visual_proof/linux/unreal_linux_proxy_5.8.log`
+- `artifacts/reports/unreal_visual_proof/linux/unreal_linux_proxy_5.8_llvmpipe.log`
+
+Both runs correctly stopped before screenshot capture. This is a host
+renderer-capability blocker, not evidence that Cesium tiles failed to load.
+The next meaningful step is to rerun the same lane on a Linux host or Docker
+runtime with GPU/Vulkan passthrough and then apply the six-image comparison
+gate.
 
 Current follow-up:
 
