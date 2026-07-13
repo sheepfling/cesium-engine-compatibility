@@ -15,6 +15,11 @@ The machine-readable contract lives in `cesium-visual-proof`. This note explains
 how to use it first on Windows, where we can compare the capture output against
 the current host without mixing in other platform variables.
 
+Current status: Unreal Windows 5.8 meets the visual proof bar. Unity and Godot
+remain open blockers because their current Cesium-earth images do not visibly
+show a populated Cesium globe; a passing manifest or fallback capture is not
+enough to close that claim.
+
 ## What The Packet Fixes
 
 The visual-proof packet standardizes:

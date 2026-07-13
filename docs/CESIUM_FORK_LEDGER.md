@@ -61,6 +61,9 @@ Known code changes and report updates:
 Lane split:
 
 - Windows 5.7/5.8 is the main Unreal plugin proof lane.
+- Unreal Windows 5.8 is visually complete for the current proof packet: the
+  source build, automation test, tileset population, and six normalized images
+  all pass.
 - Linux Docker is the repeatable host proof lane for Unreal 5.8.
 - The Unreal source fixes belong in `CesiumGS/cesium-unreal`.
 - The repo workflow/reporting changes stay here.
@@ -97,6 +100,9 @@ Lane split:
 - the repo workflow/reporting changes stay here
 - the current blocker is a real Unity 6000.5 source/API drift issue, not a
   generic packaging failure
+- Unity Windows is **not visually complete**: the current Cesium-earth images
+  do not show an acceptable populated Cesium globe, even though the bootstrap
+  manifest and fallback-player gates pass.
 
 Where to look:
 
@@ -127,6 +133,9 @@ Lane split:
 - the repo workflow/reporting changes stay here
 - Windows and Linux are both part of the same Godot compatibility story, but
   they produce separate proof packets
+- Godot Windows is **not visually complete**: the current Cesium-earth images
+  do not show an acceptable populated Cesium globe, so the proxy/bootstrap
+  evidence must not be treated as final Cesium proof.
 
 Where to look:
 

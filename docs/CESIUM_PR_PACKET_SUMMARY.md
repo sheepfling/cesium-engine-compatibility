@@ -21,6 +21,22 @@ produces PNGs.
 The visual-proof audit composes the contracts, root validation, and perceptual
 comparison into one programmatic gate.
 
+## Visual Review Correction (2026-07-13)
+
+The Windows visual packet must not be read as proof that every Cesium-earth
+variant visibly rendered a populated globe. Human review of the current images
+shows that the Unity and Godot Cesium variants do not yet show an acceptable
+Cesium Earth. Their manifests and image-quality gates are useful bootstrap
+evidence, but Unity and Godot remain **not visually complete** until their
+Cesium-earth captures visibly contain the expected terrain and imagery rather
+than proxy geometry or sparse fragments.
+
+Unreal Windows 5.8 is the completed exception in this packet. Its build
+returned success, the `Cesium.VisualProof.Windows.CesiumEarth` automation test
+completed successfully, and the three Cesium shots reported `70`, `98`, and
+`118` loaded tile components respectively. The normalized six-image Unreal 5.8
+root is the current completed Windows Cesium-earth proof.
+
 ## Unity Cesium-Earth Gate
 
 The Unity proof fork now keeps proxy-earth and Cesium-earth as separate claims.
@@ -38,9 +54,10 @@ black, gray, cube-only, or drifted frames.
 
 The current Windows host has no Ion token in its environment, so Ion account
 coverage remains unverified. The credential-free URL-fixture run produced
-rendered Cesium tile children and a green normalized six-frame Unity root.
-Both routes still pass through normalization, root validation, and comparison;
-the URL route is the reproducible Windows Cesium-earth claim.
+bootstrap tile-child markers and a normalized six-frame Unity root, but human
+review does not accept the resulting Cesium-earth images as a populated Cesium
+globe. Unity therefore remains open until the capture visibly shows terrain and
+imagery.
 
 The comparison gate uses raw pixel metrics for same-engine version drift, while
 cross-engine comparisons retain renderer-independent edge occupancy, centroid,
@@ -93,8 +110,8 @@ without making the summary look greener than the underlying evidence really is.
 | Surface | Verified Today | Still Planned |
 | --- | --- | --- |
 | Unreal | Windows 5.7/5.8, Linux Docker 5.7/5.8 build evidence, Linux 5.7/5.8 matrix coverage | stronger source-built Linux platform-support story for long-lived upstream reference |
-| Unity | Windows host coverage across `6000.3.19f1`, `6000.5.2f1`, and `6000.6.0b2`; the example-build lane now attempts all three installed editors; plus the Unity native matrix report and a live Linux Docker report | separate live Cesium install/build proof |
-| Godot | Windows and Linux coverage across `4.6.3-stable`, `4.7-stable`, `4.7.1-rc1`, and `4.8-dev1`, plus a live Linux Docker report | macOS native import/open or build proof |
+| Unity | Windows host/editor/package coverage across `6000.3.19f1`, `6000.5.2f1`, and `6000.6.0b2`; the example-build lane and fallback player are exercised | populated Cesium-earth visual proof, licensed/editor-backed run, and separate live Cesium install/build proof |
+| Godot | Windows and Linux bootstrap/import coverage across `4.6.3-stable`, `4.7-stable`, `4.7.1-rc1`, and `4.8-dev1`, plus a live Linux Docker report | populated Cesium-earth visual proof and macOS native import/open or build proof |
 
 ## Verified Today
 
@@ -106,7 +123,7 @@ without making the summary look greener than the underlying evidence really is.
   automation, normalization, and visual gates.
 - Unreal Windows visual-proof contract is now manifest-backed for the normalized `Saved/Screenshots/WindowsEditor` outputs, so the packet can tell the normalized PNG set from stray editor artifacts
 - Unreal Windows visual-proof runner now names the exact `Cesium.VisualProof.Windows.ProxyEarth` and `Cesium.VisualProof.Windows.CesiumEarth` automation tests, plus the normalized proof root, so the runner evidence is explicit in the packet graph
-- Unity and Godot Windows visual-proof rows now carry the same runner metadata shape as Unreal, including the manifest path and six capture paths, so the packet can describe the proof lane consistently across all three engines
+- Unity and Godot Windows visual-proof rows carry the same runner metadata shape as Unreal, but their current images are **not** accepted as populated Cesium-earth proof; the common metadata shape does not override visual review
 - Unreal Linux Docker build evidence is explicit for `5.7` and `5.8`; the
   current build path now completes successfully and emits the Linux shipping
   binary on both lanes
@@ -144,10 +161,11 @@ The fork also guards the native `EntityId` header and bindings behind
 `CESIUM_UNITY_USE_ENTITY_ID`, preserving the older integer path for pre-6000.5
 editors. On this host Unity `6000.5.2f1` compiles the managed fork and packages
 a real Windows `CesiumForUnityNative.dll`; the player exits cleanly and emits
-the six named captures. The URL-fixture route now produces four rendered tile
-child renderers and passes the normalized six-frame root validation. Ion
+the six named captures. The URL-fixture route now produces four bootstrap tile
+child renderers and passes the normalized six-frame root validation, but the
+images are not accepted as populated Cesium-earth visual proof. Ion
 authentication remains a separate host capability and is not implied by the
-credential-free URL proof.
+credential-free URL run.
 
 When Unity licensing prevents `BuildPipeline.BuildPlayer`, the runner accepts
 only an explicit `CESIUM_UNITY_PROOF_PLAYER` fallback. It records the failed
@@ -173,9 +191,10 @@ The proof harness also bounds the Forward+ camera frustum to `1,000,000`
 engine units after local tileset normalization. This avoids the Windows
 renderer `create_frustum_points` failure seen with the previous `20,000,000`
 far plane. The existing host DLL has not yet been rebuilt from the corrected
-fork because its Cesium Native/vcpkg dependency cache is incomplete, so the
-current host evidence is separated into real tile HTTP requests, rendered
-tile-node markers, and a temporary visible-geometry compatibility fallback.
+fork because its Cesium Native/vcpkg dependency cache is incomplete. The
+current host evidence is therefore limited to real tile HTTP requests,
+rendered tile-node markers, and a temporary visible-geometry compatibility
+fallback; it is not accepted as final populated Cesium-earth visual proof.
 
 The PR must include the fork source change, a rebuilt Windows DLL, and a fresh
 six-frame proof run with the fallback removed or disabled. Until then, the

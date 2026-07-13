@@ -211,10 +211,11 @@ The tooling regression suite remains green (`96 passed`). A current Windows
 `6000.5.2f1` run compiles the managed fork and packages a real
 `CesiumForUnityNative.dll` (about 51 MB), then the player emits all six named
 captures and exits cleanly. The URL-fixture run records
-`cesium_configured=true`, `cesium_ready=true`, and four tile renderers; the
-normalized Windows root passes its six-frame contract. Therefore the PR can
-claim a green credential-free Cesium-earth proof for the URL route. It must
-still keep live Ion authentication as a separate, unverified host capability.
+`cesium_configured=true`, `cesium_ready=true`, and four bootstrap tile
+renderers; the normalized Windows root passes its six-frame contract. Human
+review does not accept the resulting Cesium-earth images as a populated Cesium
+globe, so the PR must not claim completed Unity visual proof yet. Live Ion
+authentication remains a separate, unverified host capability.
 
 ### Fork Patch Boundary
 
